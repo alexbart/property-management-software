@@ -1,5 +1,9 @@
 import { Link, Route, Routes } from "react-router-dom";
 import ReconciliationDashboard from "./pages/ReconciliationDashboard";
+import CreateTicketForm from "./pages/tenant/CreateTicketForm";
+import MaintenanceList from "./pages/tenant/MaintenanceList";
+import SubmitNoticeForm from "./pages/tenant/SubmitNoticeForm";
+import TenantDashboard from "./pages/tenant/TenantDashboard";
 
 function App() {
   return (
@@ -37,6 +41,13 @@ function App() {
             }
           />
           <Route path="/dashboard" element={<ReconciliationDashboard />} />
+          <Route path="/tenant/dashboard" element={<TenantDashboard />} />
+          <Route path="/tenant/maintenance" element={<MaintenanceList />} />
+          <Route
+            path="/tenant/maintenance/new"
+            element={<CreateTicketForm />}
+          />
+          <Route path="/tenant/notice" element={<SubmitNoticeForm />} />
         </Routes>
     </div>
   );
