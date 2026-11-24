@@ -2,15 +2,16 @@
 
 ## Current Milestone
 
-Milestone 002A - Core Data Model (Residential Property Inventory)
+Milestone 002B - Catalogue & Assignment Model (Amenities, Policies, Images)
 
 ## Current Status
 
 Milestone 002 design is approved. Milestone 002A (core inventory data
-model) is implemented and validated against a local PostgreSQL database:
-Prisma schema, initial migration, constraints/indexes and tests are in
-place. No authentication, tenancy, rent, penalty or payment functionality
-is implemented yet (by design).
+model) and Milestone 002B (reusable amenity/policy catalogues, target-based
+assignments with inheritance, and provider-neutral image metadata) are
+implemented and validated against a local PostgreSQL database. No
+authentication, tenancy, rent, penalty or payment functionality is
+implemented yet (by design).
 
 ## Completed
 
@@ -61,11 +62,35 @@ is implemented yet (by design).
 - DB integration tests; full API suite passes (12 tests).
 - Validated: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` green.
 
+### Milestone 002B (Catalogue & Assignment)
+
+- Reusable catalogues: `Amenity` (`FEATURE`/`AMENITY`/`UTILITY`) and
+  `PolicyDefinition` (typed `BOOLEAN`/`ENUM`/`INTEGER`/`TEXT`), with
+  deactivate-not-delete semantics.
+- Target-based `AmenityAssignment` (`INCLUDE`/`EXCLUDE`) and
+  `PolicyAssignment` (`SET`/`EXCLUDE`) at property/building/unit level.
+- Stored generated `target_id` on all three target tables (raw SQL);
+  `units` gains `UNIQUE(id, property_id)`; composite FKs keep every
+  assignment within one property.
+- Policy value typing enforced at the DB: denormalised `value_type` with a
+  composite FK to the definition plus a CHECK requiring exactly one
+  correctly-typed value column (or none for `EXCLUDE`).
+- Provider-neutral `InventoryImage` metadata with a partial unique primary
+  index (ignoring soft-deleted rows), soft-delete + `storage_cleanup_status`
+  (`PENDING`/`DONE`/`FAILED`), 30-day retention before hard delete.
+- Pure inheritance resolvers (`amenity-resolver`, `policy-resolver`) with
+  unit tests; `EXCLUDE` is distinct from no assignment.
+- Read API: `GET /api/v1/inventory/amenities`, `/policies`, `/effective`
+  (auth middleware pending ADR-004).
+- Migration `20261124120000_inventory_catalogue` applied; DB integration
+  and route tests added. Full API suite passes (38 tests).
+- Validated: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` green.
+
 ## In Progress
 
-- Next Milestone 002A slices: amenities & accommodation policies,
-  property-manager assignments + authorization, images/storage, inventory
-  APIs (validation, Swagger, tests).
+- Next Milestone 002B slices: image upload integration (storage provider
+  selection deferred), catalogue/assignment write APIs, property-manager
+  assignments + authorization, inventory mutation endpoints.
 
 ## Pending
 
@@ -73,6 +98,8 @@ is implemented yet (by design).
 - Tenancy, rent charges, payments, penalties — later financial-ledger
   milestone; still blocked/require separate approval.
 - `off_market_reason` values (SR-5) — to confirm.
+- Storage provider selection and upload integration (002B deferred).
+- Hard-delete cron for soft-deleted images after 30 days (`DONE` rows).
 
 ## Current Branch
 
@@ -81,12 +108,13 @@ feature/project-foundation
 ## Last Verified Commit
 
 33a3f07 - chore: initialize property management platform foundation
-(design docs and Milestone 002A changes added since, not yet committed)
+(design docs and Milestone 002A/002B changes added since, not yet committed)
 
 ## Next Milestone
 
-Complete Milestone 002A (amenities/policies, manager assignments, images,
-inventory APIs), then the tenancy/ledger milestone.
+Finish the remaining Milestone 002B slices (image upload integration once a
+storage provider is chosen, catalogue/assignment write APIs, manager
+assignments + authorization), then the tenancy/ledger milestone.
 
 ## Known Decisions Pending (require client input)
 

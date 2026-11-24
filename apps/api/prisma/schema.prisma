@@ -57,6 +57,45 @@ enum LandlordKind {
 }
 
 // ---------------------------------------------------------------------------
+// Enums — Milestone 002B (catalogue & assignment model)
+// ---------------------------------------------------------------------------
+
+enum InventoryLevel {
+  PROPERTY
+  BUILDING
+  UNIT
+}
+
+enum AmenityCategory {
+  FEATURE
+  AMENITY
+  UTILITY
+}
+
+enum AmenityAssignmentMode {
+  INCLUDE
+  EXCLUDE
+}
+
+enum PolicyValueType {
+  BOOLEAN
+  ENUM
+  INTEGER
+  TEXT
+}
+
+enum PolicyAssignmentMode {
+  SET
+  EXCLUDE
+}
+
+enum StorageCleanupStatus {
+  PENDING
+  DONE
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
 // Portfolio & Tenancy (Milestone 002A — core inventory)
 // ---------------------------------------------------------------------------
 
@@ -144,4 +183,100 @@ model Unit {
   @@index([buildingId])
   @@index([unitType])
   @@map("units")
+}
+
+// ---------------------------------------------------------------------------
+// Catalogue & Assignment (Milestone 002B)
+//
+// target_id, composite FKs, CHECK constraints and partial unique indexes are
+// added in the migration via raw SQL (Prisma cannot express them).
+// ---------------------------------------------------------------------------
+
+model Amenity {
+  id        String          @id @default(uuid()) @db.Uuid
+  key       String          @unique @db.VarChar(64)
+  name      String          @db.VarChar(120)
+  category  AmenityCategory
+  active    Boolean         @default(true)
+  deletedAt DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("amenities")
+}
+
+model PolicyDefinition {
+  id         String          @id @default(uuid()) @db.Uuid
+  key        String          @unique @db.VarChar(64)
+  name       String          @db.VarChar(120)
+  valueType  PolicyValueType @map("value_type")
+  enumValues String[]        @default([]) @map("enum_values")
+  active     Boolean         @default(true)
+  deletedAt  DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("policy_definitions")
+}
+
+model AmenityAssignment {
+  id         String                @id @default(uuid()) @db.Uuid
+  amenityId  String                @map("amenity_id") @db.Uuid
+  level      InventoryLevel
+  propertyId String                @map("property_id") @db.Uuid
+  buildingId String?               @map("building_id") @db.Uuid
+  unitId     String?               @map("unit_id") @db.Uuid
+  mode       AmenityAssignmentMode
+  createdAt  DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([amenityId])
+  @@index([propertyId])
+  @@map("amenity_assignments")
+}
+
+model PolicyAssignment {
+  id         String               @id @default(uuid()) @db.Uuid
+  policyId   String               @map("policy_id") @db.Uuid
+  valueType  PolicyValueType      @map("value_type")
+  level      InventoryLevel
+  propertyId String               @map("property_id") @db.Uuid
+  buildingId String?              @map("building_id") @db.Uuid
+  unitId     String?              @map("unit_id") @db.Uuid
+  mode       PolicyAssignmentMode
+  valueBool  Boolean?             @map("value_bool")
+  valueEnum  String?              @map("value_enum") @db.VarChar(64)
+  valueInt   Int?                 @map("value_int")
+  valueText  String?              @map("value_text") @db.Text
+  createdAt  DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([policyId])
+  @@index([propertyId])
+  @@map("policy_assignments")
+}
+
+model InventoryImage {
+  id                   String               @id @default(uuid()) @db.Uuid
+  level                InventoryLevel
+  propertyId           String               @map("property_id") @db.Uuid
+  buildingId           String?              @map("building_id") @db.Uuid
+  unitId               String?              @map("unit_id") @db.Uuid
+  storageProvider      String               @map("storage_provider") @db.VarChar(40)
+  storageKey           String               @map("storage_key") @db.VarChar(512)
+  mimeType             String               @map("mime_type") @db.VarChar(128)
+  fileSize             Int                  @map("file_size")
+  width                Int?
+  height               Int?
+  originalFilename     String               @map("original_filename") @db.VarChar(255)
+  caption              String?              @db.VarChar(500)
+  sortOrder            Int                  @default(0) @map("sort_order")
+  isPrimary            Boolean              @default(false) @map("is_primary")
+  deletedAt            DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  storageCleanupStatus StorageCleanupStatus @default(PENDING) @map("storage_cleanup_status")
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([propertyId])
+  @@map("inventory_images")
 }
