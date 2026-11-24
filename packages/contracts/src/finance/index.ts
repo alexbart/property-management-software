@@ -40,3 +40,18 @@ export const LeaseBalanceParamsDto = z.object({
   leaseId: z.string().uuid(),
 });
 export type LeaseBalanceParamsDto = z.infer<typeof LeaseBalanceParamsDto>;
+
+export const ArrearsParamsDto = z.object({
+  leaseId: z.string().uuid(),
+});
+export type ArrearsParamsDto = z.infer<typeof ArrearsParamsDto>;
+
+// Money is transported as an exact decimal string; never a JS float.
+export const ArrearsSummaryDto = z.object({
+  totalDue: z.string(),
+  totalPaid: z.string(),
+  currentBalance: z.string(),
+  daysOverdue: z.number().int().nonnegative(),
+  penaltyAccrued: z.string(),
+});
+export type ArrearsSummaryDto = z.infer<typeof ArrearsSummaryDto>;

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { propertyScope } from "../lease/middleware/property-scope.js";
+import { getArrearsHandler } from "./controllers/arrears.controller.js";
 import {
   createManualPaymentHandler,
   getBalanceHandler,
@@ -18,4 +19,9 @@ financeRouter.get(
   "/finance/leases/:leaseId/balance",
   propertyScope,
   getBalanceHandler,
+);
+financeRouter.get(
+  "/finance/leases/:leaseId/arrears",
+  propertyScope,
+  getArrearsHandler,
 );

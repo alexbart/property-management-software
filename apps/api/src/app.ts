@@ -7,6 +7,7 @@ import { inventoryRouter } from "./modules/inventory/inventory-routes.js";
 import { leaseRouter } from "./modules/lease/lease-routes.js";
 import { financeRouter } from "./modules/finance/finance-routes.js";
 import { maintenanceRouter } from "./modules/maintenance/maintenance-routes.js";
+import { tenantRouter } from "./modules/tenant/tenant-routes.js";
 
 export const app: ReturnType<typeof express> = express();
 
@@ -31,6 +32,9 @@ app.use("/api/v1/leases", leaseRouter);
 
 // Finance: M-Pesa webhook (public) + scoped payment/balance routes.
 app.use("/api/v1", financeRouter);
+
+// Tenant risk evaluation and profile.
+app.use("/api/v1/tenants", tenantRouter);
 
 // Maintenance work orders.
 app.use("/api/v1/maintenance", maintenanceRouter);
