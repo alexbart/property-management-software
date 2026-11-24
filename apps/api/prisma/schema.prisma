@@ -153,6 +153,17 @@ enum TicketInitiator {
 }
 
 // ---------------------------------------------------------------------------
+// Enums — Milestone 007 (tenant notices & reconciliation)
+// ---------------------------------------------------------------------------
+
+enum NoticeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+// ---------------------------------------------------------------------------
 // Portfolio & Tenancy (Milestone 002A — core inventory)
 // ---------------------------------------------------------------------------
 
@@ -193,6 +204,7 @@ model Property {
   ledgerEntries      LedgerEntry[]
   payments           Payment[]
   maintenanceTickets MaintenanceTicket[]
+  tenantNotices      TenantNotice[]
 
   @@index([landlordId])
   @@index([county, town, neighbourhood])
@@ -367,6 +379,7 @@ model Tenant {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   leases Lease[]
+  tenantNotices TenantNotice[]
 
   @@index([phone])
   @@map("tenants")
@@ -392,6 +405,7 @@ model Lease {
 
   ledgerEntries LedgerEntry[]
   payments      Payment[]
+  tenantNotices TenantNotice[]
 
   @@index([tenantId])
   @@index([unitId])
@@ -487,4 +501,35 @@ model MaintenanceTicket {
   @@index([status])
   @@index([priority])
   @@map("maintenance_tickets")
+}
+
+// ---------------------------------------------------------------------------
+// Tenant notices (Milestone 007)
+//
+// Tracks vacation/termination notices. The 30-day minimum notice period is
+// enforced in the service layer against the lease noticePeriodDays.
+// ---------------------------------------------------------------------------
+
+model TenantNotice {
+  id                 String       @id @default(uuid()) @db.Uuid
+  leaseId            String       @map("lease_id") @db.Uuid
+  lease              Lease        @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+  propertyId         String       @map("property_id") @db.Uuid
+  property           Property     @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  tenantId           String       @map("tenant_id") @db.Uuid
+  tenant             Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  noticeDate         DateTime     @map("notice_date") @db.Timestamptz(6)
+  intendedMoveOutDate DateTime    @map("intended_move_out_date") @db.Timestamptz(6)
+  status             NoticeStatus @default(PENDING)
+  reason             String?      @db.VarChar(500)
+  reviewedBy         String?      @map("reviewed_by") @db.VarChar(64)
+  reviewedAt         DateTime?    @map("reviewed_at") @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([leaseId])
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([status])
+  @@map("tenant_notices")
 }

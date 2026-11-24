@@ -1,3 +1,4 @@
+import type { NoticeStatus } from "@prisma/client";
 import { prisma } from "../../../database/prisma.js";
 import { NotFoundException } from "../../finance/services/finance.service.js";
 
@@ -67,5 +68,32 @@ export async function createNotice(data: CreateNoticeInput) {
       intendedMoveOutDate: data.intendedMoveOutDate,
       reason: data.reason,
     },
+  });
+}
+
+/**
+ * Approve/reject/withdraw a notice. Enforces property isolation and records
+ * who reviewed it and when.
+ */
+export async function updateNoticeStatus(
+  id: string,
+  propertyId: string,
+  status: NoticeStatus,
+  reviewedBy?: string,
+) {
+  const notice = await prisma.tenantNotice.findFirst({
+    where: { id, propertyId },
+    select: { id: true },
+  });
+
+  if (!notice) {
+    throw new NotFoundException(
+      `Notice ${id} not found for property ${propertyId}`,
+    );
+  }
+
+  return prisma.tenantNotice.update({
+    where: { id },
+    data: { status, reviewedAt: new Date(), reviewedBy },
   });
 }

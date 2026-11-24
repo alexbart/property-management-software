@@ -55,3 +55,29 @@ export const ArrearsSummaryDto = z.object({
   penaltyAccrued: z.string(),
 });
 export type ArrearsSummaryDto = z.infer<typeof ArrearsSummaryDto>;
+
+export const ReconciliationParamsDto = z.object({
+  propertyId: z.string().uuid(),
+});
+export type ReconciliationParamsDto = z.infer<typeof ReconciliationParamsDto>;
+
+export const ReconciliationQueryDto = z
+  .object({
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date(),
+  })
+  .refine((data) => data.endDate > data.startDate, {
+    message: "endDate must be after startDate",
+    path: ["endDate"],
+  });
+export type ReconciliationQueryDto = z.infer<typeof ReconciliationQueryDto>;
+
+export const ReconciliationSummaryDto = z.object({
+  totalRentDue: z.string(),
+  totalCollected: z.string(),
+  totalMaintenanceExpenses: z.string(),
+  estimatedNOI: z.string(),
+});
+export type ReconciliationSummaryDto = z.infer<
+  typeof ReconciliationSummaryDto
+>;

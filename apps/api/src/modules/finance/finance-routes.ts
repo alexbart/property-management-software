@@ -6,6 +6,7 @@ import {
   getBalanceHandler,
   mpesaWebhookHandler,
 } from "./controllers/finance.controller.js";
+import { getReconciliationHandler } from "./controllers/reconciliation.controller.js";
 
 export const financeRouter: Router = Router();
 
@@ -24,4 +25,9 @@ financeRouter.get(
   "/finance/leases/:leaseId/arrears",
   propertyScope,
   getArrearsHandler,
+);
+financeRouter.get(
+  "/finance/properties/:propertyId/reconciliation",
+  propertyScope,
+  getReconciliationHandler,
 );
