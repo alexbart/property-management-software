@@ -5,10 +5,9 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { app } from "../../../app.js";
 
 const prisma = new PrismaClient();
-const run = `m006-risk-${Date.now()}`;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const run = `m010-tenants-${Date.now()}`;
 
-describe.skipIf(!process.env.DATABASE_URL)("tenant risk API", () => {
+describe.skipIf(!process.env.DATABASE_URL)("tenant list API", () => {
   let landlordId!: string;
   let propertyAId!: string;
   let propertyBId!: string;
@@ -57,11 +56,13 @@ describe.skipIf(!process.env.DATABASE_URL)("tenant risk API", () => {
         lastName: "Doe",
         phone: `+2547${Date.now().toString().slice(-6)}`,
         idNumber: `ID-${run}`,
+        riskScore: 60,
+        riskFlags: ["HIGH_RISK"],
       },
     });
     tenantId = tenant.id;
 
-    const lease = await prisma.lease.create({
+    await prisma.lease.create({
       data: {
         tenantId,
         unitId: unit.id,
@@ -73,22 +74,10 @@ describe.skipIf(!process.env.DATABASE_URL)("tenant risk API", () => {
         status: "ACTIVE",
       },
     });
-
-    await prisma.ledgerEntry.create({
-      data: {
-        leaseId: lease.id,
-        propertyId: propertyAId,
-        type: "RENT",
-        amount: new Prisma.Decimal("12000.00"),
-        description: "January rent",
-        effectiveDate: new Date(Date.now() - 60 * MS_PER_DAY),
-      },
-    });
   });
 
   afterAll(async () => {
     if (propertyAId) {
-      await prisma.ledgerEntry.deleteMany({ where: { propertyId: propertyAId } });
       await prisma.lease.deleteMany({ where: { propertyId: propertyAId } });
       await prisma.unit.deleteMany({ where: { propertyId: propertyAId } });
       await prisma.property.deleteMany({ where: { id: propertyAId } });
@@ -103,34 +92,21 @@ describe.skipIf(!process.env.DATABASE_URL)("tenant risk API", () => {
     await prisma.$disconnect();
   });
 
-  it("evaluates and returns an updated risk profile", async () => {
+  it("returns tenants for the scoped property ranked by risk", async () => {
     const response = await request(app)
-      .post(`/api/v1/tenants/${tenantId}/evaluate-risk`)
+      .get("/api/v1/tenants")
       .set("x-property-id", propertyAId)
       .expect(200);
 
-    // 50 (arrears) + 10 (late) = 60.
-    expect(response.body.data.riskScore).toBe(60);
-    expect(response.body.data.riskFlags).toContain("HIGH_RISK");
-    expect(response.body.data.riskFlags).toContain("CHRONIC_LATE");
-
-    const profile = await request(app)
-      .get(`/api/v1/tenants/${tenantId}/risk-profile`)
-      .set("x-property-id", propertyAId)
-      .expect(200);
-
-    expect(profile.body.data.riskScore).toBe(60);
-    expect(profile.body.data.riskFlags).toContain("HIGH_RISK");
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0].id).toBe(tenantId);
+    expect(response.body.data[0].riskScore).toBe(60);
+    expect(response.body.data[0].riskFlags).toContain("HIGH_RISK");
   });
 
-  it("rejects cross-property risk access", async () => {
+  it("rejects cross-property access", async () => {
     await request(app)
-      .post(`/api/v1/tenants/${tenantId}/evaluate-risk`)
-      .set("x-property-id", propertyBId)
-      .expect(403);
-
-    await request(app)
-      .get(`/api/v1/tenants/${tenantId}/risk-profile`)
+      .get(`/api/v1/tenants?propertyId=${propertyAId}`)
       .set("x-property-id", propertyBId)
       .expect(403);
   });

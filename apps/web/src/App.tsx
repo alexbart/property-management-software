@@ -1,5 +1,7 @@
 import { Link, Route, Routes } from "react-router-dom";
 import ReconciliationDashboard from "./pages/ReconciliationDashboard";
+import MaintenanceVerification from "./pages/landlord/MaintenanceVerification";
+import TenantRiskRegister from "./pages/landlord/TenantRiskRegister";
 import CreateTicketForm from "./pages/tenant/CreateTicketForm";
 import MaintenanceList from "./pages/tenant/MaintenanceList";
 import SubmitNoticeForm from "./pages/tenant/SubmitNoticeForm";
@@ -41,6 +43,14 @@ function App() {
             }
           />
           <Route path="/dashboard" element={<ReconciliationDashboard />} />
+          <Route
+            path="/landlord/risk-register"
+            element={<TenantRiskRegister />}
+          />
+          <Route
+            path="/landlord/maintenance-verification"
+            element={<MaintenanceVerification />}
+          />
           <Route path="/tenant/dashboard" element={<TenantDashboard />} />
           <Route path="/tenant/maintenance" element={<MaintenanceList />} />
           <Route

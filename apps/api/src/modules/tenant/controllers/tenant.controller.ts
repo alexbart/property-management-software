@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { ZodError } from "zod";
-import { TenantIdParamsDto } from "@property-platform/contracts";
+import { TenantIdParamsDto, TenantListQueryDto } from "@property-platform/contracts";
 import { prisma } from "../../../database/prisma.js";
 import { NotFoundException } from "../../finance/services/finance.service.js";
 import { evaluateAndUpdateRiskScore } from "../services/tenant-risk.service.js";
@@ -24,6 +24,41 @@ function handleError(res: Response, error: unknown): void {
   }
 
   res.status(500).json({ error: { code: "INTERNAL_ERROR" } });
+}
+
+/** List tenants with leases in the caller's property, ranked by risk. */
+export async function listTenantsHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const scope = res.locals.propertyId as string;
+    const query = TenantListQueryDto.parse(req.query);
+
+    if (query.propertyId && query.propertyId !== scope) {
+      res.status(403).json({
+        error: { code: "FORBIDDEN", message: "Property scope mismatch" },
+      });
+      return;
+    }
+
+    const tenants = await prisma.tenant.findMany({
+      where: { leases: { some: { propertyId: scope } } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        riskScore: true,
+        riskFlags: true,
+      },
+      orderBy: { riskScore: "desc" },
+    });
+
+    res.status(200).json({ data: tenants });
+  } catch (error) {
+    handleError(res, error);
+  }
 }
 
 /** Recompute and persist a tenant's risk profile within the caller's property. */
