@@ -56,6 +56,10 @@ async function resolveActiveLeaseByPhone(phone: string) {
 /**
  * Public Safaricom Darara webhook. Always returns 200 for handled callbacks so
  * Safaricom does not retry; duplicates are absorbed by payment idempotency.
+ *
+ * Security: strict Zod validation is the first line of defence. Production
+ * hardening still requires Darara signature verification and/or an IP
+ * allow-list middleware (deferred refinement).
  */
 export async function mpesaWebhookHandler(
   req: Request,
@@ -80,7 +84,7 @@ export async function mpesaWebhookHandler(
     const payment = await recordPayment(
       lease.id,
       lease.propertyId,
-      new Prisma.Decimal(String(body.Amount)),
+      new Prisma.Decimal(body.Amount),
       "MPESA",
       body.CheckoutRequestID,
     );
@@ -123,7 +127,7 @@ export async function createManualPaymentHandler(
     const payment = await recordPayment(
       body.leaseId,
       body.propertyId,
-      new Prisma.Decimal(String(body.amount)),
+      new Prisma.Decimal(body.amount),
       body.method,
       body.reference,
     );

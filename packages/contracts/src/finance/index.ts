@@ -1,5 +1,17 @@
 import { z } from "zod";
 
+// Money is transported as a decimal string (or a JSON number for convenience)
+// and normalised to a string so the API can build an exact Prisma.Decimal.
+// Never perform floating-point arithmetic on money.
+const decimalAmount = z
+  .union([
+    z
+      .string()
+      .regex(/^\d+(\.\d{1,2})?$/, "Amount must be a decimal with up to 2 places"),
+    z.number().nonnegative(),
+  ])
+  .transform((value) => (typeof value === "number" ? value.toString() : value));
+
 /**
  * Normalised Safaricom Daraja STK Push / B2C callback. A real Darara adapter
  * maps the nested `Body.stkCallback.CallbackMetadata.Item[]` payload into this
@@ -10,7 +22,7 @@ export const MpesaCallbackDto = z.object({
   MerchantRequestID: z.string().optional(),
   ResultCode: z.number().int(),
   ResultDesc: z.string(),
-  Amount: z.number().nonnegative(),
+  Amount: decimalAmount,
   PhoneNumber: z.string().min(1),
 });
 export type MpesaCallbackDto = z.infer<typeof MpesaCallbackDto>;
@@ -18,7 +30,7 @@ export type MpesaCallbackDto = z.infer<typeof MpesaCallbackDto>;
 export const RecordPaymentDto = z.object({
   leaseId: z.string().uuid(),
   propertyId: z.string().uuid(),
-  amount: z.number().nonnegative(),
+  amount: decimalAmount,
   method: z.enum(["MPESA", "CASH", "BANK"]),
   reference: z.string().min(1).max(100),
 });
