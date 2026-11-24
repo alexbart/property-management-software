@@ -130,6 +130,29 @@ enum PaymentStatus {
 }
 
 // ---------------------------------------------------------------------------
+// Enums — Milestone 005 (maintenance & work orders)
+// ---------------------------------------------------------------------------
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CANCELLED
+}
+
+enum TicketInitiator {
+  TENANT
+  MANAGER
+}
+
+// ---------------------------------------------------------------------------
 // Portfolio & Tenancy (Milestone 002A — core inventory)
 // ---------------------------------------------------------------------------
 
@@ -164,11 +187,12 @@ model Property {
   createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  buildings     Building[]
-  units         Unit[]
-  leases        Lease[]
-  ledgerEntries LedgerEntry[]
-  payments      Payment[]
+  buildings          Building[]
+  units              Unit[]
+  leases             Lease[]
+  ledgerEntries      LedgerEntry[]
+  payments           Payment[]
+  maintenanceTickets MaintenanceTicket[]
 
   @@index([landlordId])
   @@index([county, town, neighbourhood])
@@ -216,7 +240,8 @@ model Unit {
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  leases Lease[]
+  leases           Lease[]
+  maintenanceTickets MaintenanceTicket[]
 
   @@index([propertyId])
   @@index([buildingId])
@@ -428,4 +453,38 @@ model IdempotencyKey {
 
   @@index([expiresAt])
   @@map("idempotency_keys")
+}
+
+// ---------------------------------------------------------------------------
+// Maintenance (Milestone 005 — work orders)
+//
+// initiator_id is a flexible string (tenant or user id) because identity
+// tables are not implemented yet (ADR-004). The composite
+// (unit_id, property_id) FK is added in the migration.
+// ---------------------------------------------------------------------------
+
+model MaintenanceTicket {
+  id              String          @id @default(uuid()) @db.Uuid
+  propertyId      String          @map("property_id") @db.Uuid
+  property        Property        @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  unitId          String          @map("unit_id") @db.Uuid
+  unit            Unit            @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  initiatedBy     TicketInitiator @map("initiated_by")
+  initiatorId     String          @map("initiator_id") @db.VarChar(64)
+  title           String          @db.VarChar(200)
+  description     String          @db.Text
+  priority        TicketPriority  @default(MEDIUM)
+  status          TicketStatus    @default(OPEN)
+  estimatedCost   Decimal?        @map("estimated_cost") @db.Decimal(12, 2)
+  actualCost      Decimal?        @default(0) @map("actual_cost") @db.Decimal(12, 2)
+  resolutionNotes String?         @map("resolution_notes") @db.Text
+  resolvedAt      DateTime?       @map("resolved_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([status])
+  @@index([priority])
+  @@map("maintenance_tickets")
 }
