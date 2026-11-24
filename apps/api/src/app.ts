@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { env } from "./config/env.js";
 import { prisma } from "./database/prisma.js";
 import { inventoryRouter } from "./modules/inventory/inventory-routes.js";
+import { leaseRouter } from "./modules/lease/lease-routes.js";
 
 export const app: ReturnType<typeof express> = express();
 
@@ -22,6 +23,9 @@ app.use(express.json({ limit: "1mb" }));
 
 // Inventory read model (catalogue + effective configuration).
 app.use("/api/v1/inventory", inventoryRouter);
+
+// Lease lifecycle.
+app.use("/api/v1/leases", leaseRouter);
 
 // Basic service health check.
 app.get("/api/v1/health", (_req, res) => {

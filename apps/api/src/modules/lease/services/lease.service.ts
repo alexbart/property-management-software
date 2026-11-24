@@ -90,9 +90,7 @@ export async function activateLease(
     });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      throw new ConflictException(
-        `Unit for lease ${leaseId} already has an active lease`,
-      );
+      throw new ConflictException("Unit already has an active lease");
     }
     throw error;
   }

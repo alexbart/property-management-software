@@ -3,3 +3,5 @@
 // independent of both the frontend and backend implementations.
 
 export const API_VERSION = "v1";
+
+export * from "./lease/index.js";
