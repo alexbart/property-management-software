@@ -12,7 +12,8 @@ export interface PropertyReconciliation {
 /**
  * Aggregate a property's financial activity over `[startDate, endDate)`.
  *
- * - totalRentDue: SUM(RENT ledger entries) by effectiveDate.
+ * - totalRentDue: SUM(RENT ledger entries) by effectiveDate. Payments never
+ *   write RENT rows (Milestone 010), so this is not inflated by cash receipts.
  * - totalCollected: SUM(COMPLETED payments) by receivedAt.
  * - totalMaintenanceExpenses: SUM(maintenance actualCost) by resolvedAt.
  * - estimatedNOI: totalCollected - totalMaintenanceExpenses.

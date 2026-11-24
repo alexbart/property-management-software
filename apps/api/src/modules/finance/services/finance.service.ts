@@ -1,5 +1,4 @@
 import type { Payment, PaymentMethod, Prisma } from "@prisma/client";
-import { Prisma as PrismaNamespace } from "@prisma/client";
 import { prisma } from "../../../database/prisma.js";
 
 /** Thrown when a lease is not found within the caller's property scope. */
@@ -16,12 +15,6 @@ export class ConflictException extends Error {
     super(message);
     this.name = "ConflictException";
   }
-}
-
-export interface LeaseBalance {
-  totalDue: Prisma.Decimal;
-  totalPaid: Prisma.Decimal;
-  balance: Prisma.Decimal;
 }
 
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -127,37 +120,4 @@ export async function recordPayment(
     }
     throw error;
   }
-}
-
-/**
- * Arrears for a lease: SUM(RENT + PENALTY) - SUM(COMPLETED payments).
- * Derived, never stored.
- */
-export async function getLeaseBalance(
-  leaseId: string,
-  propertyId: string,
-): Promise<LeaseBalance> {
-  const [charges, payments] = await Promise.all([
-    prisma.ledgerEntry.aggregate({
-      where: {
-        leaseId,
-        propertyId,
-        type: { in: ["RENT", "PENALTY"] },
-      },
-      _sum: { amount: true },
-    }),
-    prisma.payment.aggregate({
-      where: { leaseId, propertyId, status: "COMPLETED" },
-      _sum: { amount: true },
-    }),
-  ]);
-
-  const totalDue = charges._sum.amount ?? new PrismaNamespace.Decimal(0);
-  const totalPaid = payments._sum.amount ?? new PrismaNamespace.Decimal(0);
-
-  return {
-    totalDue,
-    totalPaid,
-    balance: totalDue.minus(totalPaid),
-  };
 }

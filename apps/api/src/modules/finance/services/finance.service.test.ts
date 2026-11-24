@@ -13,7 +13,6 @@ vi.mock("../../../database/prisma.js", () => ({
 
 import { prisma } from "../../../database/prisma.js";
 import {
-  getLeaseBalance,
   NotFoundException,
   recordPayment,
 } from "./finance.service.js";
@@ -129,18 +128,4 @@ describe("finance service", () => {
     expect(tx.payment.create).not.toHaveBeenCalled();
   });
 
-  it("computes arrears as RENT+PENALTY minus COMPLETED payments", async () => {
-    vi.mocked(prisma.ledgerEntry.aggregate).mockResolvedValue({
-      _sum: { amount: new Prisma.Decimal("15000.00") },
-    } as never);
-    vi.mocked(prisma.payment.aggregate).mockResolvedValue({
-      _sum: { amount: new Prisma.Decimal("5000.00") },
-    } as never);
-
-    const result = await getLeaseBalance("lease-1", "property-1");
-
-    expect(result.totalDue.equals(new Prisma.Decimal("15000.00"))).toBe(true);
-    expect(result.totalPaid.equals(new Prisma.Decimal("5000.00"))).toBe(true);
-    expect(result.balance.equals(new Prisma.Decimal("10000.00"))).toBe(true);
-  });
 });

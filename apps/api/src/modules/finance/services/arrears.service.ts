@@ -16,10 +16,11 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 /**
  * Calculate arrears and the accrued penalty for a lease as of a given date.
  *
- * - totalDue = SUM(RENT ledger entries)
+ * - totalDue = SUM(RENT + PENALTY ledger entries)
  * - totalPaid = SUM(COMPLETED payments)
  * - currentBalance = totalDue - totalPaid
- * - daysOverdue = days past (earliest RENT effectiveDate + GRACE_PERIOD_DAYS)
+ * - daysOverdue = days past (earliest RENT effectiveDate + GRACE_PERIOD_DAYS,
+ *   or lease startDate when no rent charge exists)
  * - penaltyAccrued = currentBalance * DAILY_PENALTY_RATE * daysOverdue
  *   (simple interest, applied only after the grace period)
  */
@@ -50,7 +51,9 @@ export async function calculateLeaseArrears(
 
   const totalDue = entries.reduce(
     (sum, entry) =>
-      entry.type === "RENT" ? sum.plus(entry.amount) : sum,
+      entry.type === "RENT" || entry.type === "PENALTY"
+        ? sum.plus(entry.amount)
+        : sum,
     new Prisma.Decimal(0),
   );
 
@@ -65,28 +68,31 @@ export async function calculateLeaseArrears(
   let penaltyAccrued = new Prisma.Decimal(0);
 
   if (currentBalance.greaterThan(0)) {
-    // Entries are ordered by effectiveDate ascending.
+    // Entries are ordered by effectiveDate ascending. Only genuine rent
+    // charges determine the due date; payment rows are never used.
     const earliestRent = entries.find((entry) => entry.type === "RENT");
-
-    if (earliestRent) {
-      const dueDate = new Date(
-        earliestRent.effectiveDate.getTime() +
-          penaltyConfig.GRACE_PERIOD_DAYS * MS_PER_DAY,
-      );
-
-      daysOverdue = Math.max(
-        0,
-        Math.floor((asOfDate.getTime() - dueDate.getTime()) / MS_PER_DAY),
-      );
-
-      if (daysOverdue > 0) {
-        const rate = new Prisma.Decimal(
-          String(penaltyConfig.DAILY_PENALTY_RATE),
+    const dueDate = earliestRent
+      ? new Date(
+          earliestRent.effectiveDate.getTime() +
+            penaltyConfig.GRACE_PERIOD_DAYS * MS_PER_DAY,
+        )
+      : new Date(
+          lease.startDate.getTime() +
+            penaltyConfig.GRACE_PERIOD_DAYS * MS_PER_DAY,
         );
-        penaltyAccrued = currentBalance
-          .times(rate)
-          .times(new Prisma.Decimal(daysOverdue));
-      }
+
+    daysOverdue = Math.max(
+      0,
+      Math.floor((asOfDate.getTime() - dueDate.getTime()) / MS_PER_DAY),
+    );
+
+    if (daysOverdue > 0) {
+      const rate = new Prisma.Decimal(
+        String(penaltyConfig.DAILY_PENALTY_RATE),
+      );
+      penaltyAccrued = currentBalance
+        .times(rate)
+        .times(new Prisma.Decimal(daysOverdue));
     }
   }
 

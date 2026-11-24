@@ -9,10 +9,10 @@ import {
 import { prisma } from "../../../database/prisma.js";
 import {
   ConflictException,
-  getLeaseBalance,
   NotFoundException,
   recordPayment,
 } from "../services/finance.service.js";
+import { calculateLeaseArrears } from "../services/arrears.service.js";
 
 function scopePropertyId(res: Response): string {
   return res.locals.propertyId as string;
@@ -145,7 +145,7 @@ export async function getBalanceHandler(
 ): Promise<void> {
   try {
     const { leaseId } = LeaseBalanceParamsDto.parse(req.params);
-    const balance = await getLeaseBalance(leaseId, scopePropertyId(res));
+    const balance = await calculateLeaseArrears(leaseId, scopePropertyId(res));
     res.status(200).json({ data: balance });
   } catch (error) {
     handleError(res, error);
