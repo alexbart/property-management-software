@@ -124,7 +124,8 @@ describe.skipIf(!process.env.DATABASE_URL)("finance API", () => {
     const ledgerCount = await prisma.ledgerEntry.count({
       where: { leaseId },
     });
-    expect(ledgerCount).toBe(1);
+    // Payments are cash records only; no RENT ledger row is written.
+    expect(ledgerCount).toBe(0);
   });
 
   it("absorbs a duplicate M-Pesa callback without duplicating records", async () => {
@@ -145,7 +146,7 @@ describe.skipIf(!process.env.DATABASE_URL)("finance API", () => {
     expect(paymentCount).toBe(1);
 
     const ledgerCount = await prisma.ledgerEntry.count({ where: { leaseId } });
-    expect(ledgerCount).toBe(1);
+    expect(ledgerCount).toBe(0);
   });
 
   it("creates a manual payment within scope and rejects cross-property", async () => {

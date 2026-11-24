@@ -75,11 +75,8 @@ describe("finance service", () => {
         data: expect.objectContaining({ status: "COMPLETED", reference: "ref-1" }),
       }),
     );
-    expect(tx.ledgerEntry.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ type: "RENT" }),
-      }),
-    );
+    // Payments are cash records only; they must not write a RENT ledger row.
+    expect(tx.ledgerEntry.create).not.toHaveBeenCalled();
     expect(tx.idempotencyKey.upsert).toHaveBeenCalled();
   });
 
@@ -114,7 +111,7 @@ describe("finance service", () => {
 
     expect(second.id).toBe(first.id);
     expect(tx.payment.create).toHaveBeenCalledTimes(1);
-    expect(tx.ledgerEntry.create).toHaveBeenCalledTimes(1);
+    expect(tx.ledgerEntry.create).not.toHaveBeenCalled();
   });
 
   it("rejects a lease that belongs to a different property", async () => {

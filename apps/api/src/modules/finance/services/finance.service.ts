@@ -1,4 +1,4 @@
-import type { LedgerType, Payment, PaymentMethod, Prisma } from "@prisma/client";
+import type { Payment, PaymentMethod, Prisma } from "@prisma/client";
 import { Prisma as PrismaNamespace } from "@prisma/client";
 import { prisma } from "../../../database/prisma.js";
 
@@ -35,7 +35,10 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 /**
- * Record a completed payment and its offsetting RENT ledger entry atomically.
+ * Record a completed payment.
+ *
+ * The Payment row is the cash record. No ledger entry is written: writing a
+ * RENT row here would double-count the payment in arrears (Milestone 010).
  *
  * Idempotency: the M-Pesa `reference` (CheckoutRequestID/MerchantRequestID) is
  * unique. A repeated callback returns the existing payment instead of
@@ -84,18 +87,6 @@ export async function recordPayment(
           reference,
           status: "COMPLETED",
           receivedAt: new Date(),
-        },
-      });
-
-      const ledgerType: LedgerType = "RENT";
-      await tx.ledgerEntry.create({
-        data: {
-          leaseId,
-          propertyId,
-          type: ledgerType,
-          amount,
-          description: `Payment ${reference}`,
-          effectiveDate: payment.receivedAt,
         },
       });
 
