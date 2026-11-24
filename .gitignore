@@ -1,0 +1,36 @@
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+coverage/
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Testing
+playwright-report/
+test-results/
+
+# Prisma local artifacts
+apps/api/prisma/*.db

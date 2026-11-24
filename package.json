@@ -1,0 +1,26 @@
+{
+  "name": "property-management-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.12.1",
+  "engines": {
+    "node": ">=22 <26",
+    "pnpm": "10.12.1"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @property-platform/web --filter @property-platform/api dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "globals": "^17.14.0",
+    "prettier": "3.5.3",
+    "typescript-eslint": "^8.74.0"
+  }
+}
