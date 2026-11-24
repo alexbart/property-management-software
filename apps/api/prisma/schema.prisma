@@ -107,6 +107,29 @@ enum LeaseStatus {
 }
 
 // ---------------------------------------------------------------------------
+// Enums — Milestone 004 (ledger, payments & idempotency)
+// ---------------------------------------------------------------------------
+
+enum LedgerType {
+  RENT
+  DEPOSIT
+  PENALTY
+  ADJUSTMENT
+}
+
+enum PaymentMethod {
+  MPESA
+  CASH
+  BANK
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
 // Portfolio & Tenancy (Milestone 002A — core inventory)
 // ---------------------------------------------------------------------------
 
@@ -141,9 +164,11 @@ model Property {
   createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  buildings Building[]
-  units     Unit[]
-  leases    Lease[]
+  buildings     Building[]
+  units         Unit[]
+  leases        Lease[]
+  ledgerEntries LedgerEntry[]
+  payments      Payment[]
 
   @@index([landlordId])
   @@index([county, town, neighbourhood])
@@ -340,9 +365,67 @@ model Lease {
   createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  ledgerEntries LedgerEntry[]
+  payments      Payment[]
+
   @@index([tenantId])
   @@index([unitId])
   @@index([propertyId])
   @@index([status])
   @@map("leases")
+}
+
+// ---------------------------------------------------------------------------
+// Ledger & Payments (Milestone 004)
+//
+// Ledger entries are append-only; corrections add ADJUSTMENT rows. Payment
+// references are unique so duplicate M-Pesa callbacks are safely rejected.
+// ---------------------------------------------------------------------------
+
+model LedgerEntry {
+  id            String     @id @default(uuid()) @db.Uuid
+  leaseId       String     @map("lease_id") @db.Uuid
+  lease         Lease      @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+  propertyId    String     @map("property_id") @db.Uuid
+  property      Property   @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  type          LedgerType
+  amount        Decimal    @db.Decimal(12, 2)
+  description   String     @db.VarChar(255)
+  effectiveDate DateTime   @map("effective_date") @db.Timestamptz(6)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([leaseId])
+  @@index([propertyId])
+  @@index([type])
+  @@index([effectiveDate])
+  @@map("ledger_entries")
+}
+
+model Payment {
+  id         String        @id @default(uuid()) @db.Uuid
+  leaseId    String        @map("lease_id") @db.Uuid
+  lease      Lease         @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+  propertyId String        @map("property_id") @db.Uuid
+  property   Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  amount     Decimal       @db.Decimal(12, 2)
+  method     PaymentMethod
+  reference  String        @unique @db.VarChar(100)
+  status     PaymentStatus @default(PENDING)
+  receivedAt DateTime      @map("received_at") @db.Timestamptz(6)
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([leaseId])
+  @@index([propertyId])
+  @@index([status])
+  @@map("payments")
+}
+
+model IdempotencyKey {
+  key             String   @id @db.VarChar(100)
+  responsePayload Json?    @map("response_payload")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt       DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([expiresAt])
+  @@map("idempotency_keys")
 }
