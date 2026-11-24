@@ -6,3 +6,4 @@ export const API_VERSION = "v1";
 
 export * from "./lease/index.js";
 export * from "./finance/index.js";
+export * from "./maintenance/index.js";

@@ -6,6 +6,7 @@ import { prisma } from "./database/prisma.js";
 import { inventoryRouter } from "./modules/inventory/inventory-routes.js";
 import { leaseRouter } from "./modules/lease/lease-routes.js";
 import { financeRouter } from "./modules/finance/finance-routes.js";
+import { maintenanceRouter } from "./modules/maintenance/maintenance-routes.js";
 
 export const app: ReturnType<typeof express> = express();
 
@@ -30,6 +31,9 @@ app.use("/api/v1/leases", leaseRouter);
 
 // Finance: M-Pesa webhook (public) + scoped payment/balance routes.
 app.use("/api/v1", financeRouter);
+
+// Maintenance work orders.
+app.use("/api/v1/maintenance", maintenanceRouter);
 
 // Basic service health check.
 app.get("/api/v1/health", (_req, res) => {

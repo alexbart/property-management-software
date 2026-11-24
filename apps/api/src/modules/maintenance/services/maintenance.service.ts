@@ -142,3 +142,32 @@ export async function updateTicketCost(
     data: { actualCost },
   });
 }
+
+/** List tickets for a property, optionally filtered by status. */
+export async function listTickets(
+  propertyId: string,
+  status?: TicketStatus,
+): Promise<MaintenanceTicket[]> {
+  return prisma.maintenanceTicket.findMany({
+    where: { propertyId, ...(status ? { status } : {}) },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/** Fetch a single ticket within the caller's property scope. */
+export async function getTicket(
+  ticketId: string,
+  propertyId: string,
+): Promise<MaintenanceTicket> {
+  const ticket = await prisma.maintenanceTicket.findFirst({
+    where: { id: ticketId, propertyId },
+  });
+
+  if (!ticket) {
+    throw new NotFoundException(
+      `Ticket ${ticketId} not found for property ${propertyId}`,
+    );
+  }
+
+  return ticket;
+}

@@ -3,7 +3,7 @@ import { z } from "zod";
 // Money is transported as a decimal string (or a JSON number for convenience)
 // and normalised to a string so the API can build an exact Prisma.Decimal.
 // Never perform floating-point arithmetic on money.
-const decimalAmount = z
+export const decimalAmount = z
   .union([
     z
       .string()
