@@ -176,4 +176,64 @@ describe.skipIf(!process.env.DATABASE_URL)("finance API", () => {
       })
       .expect(403);
   });
+
+  it("nets a rent charge and payment to zero arrears", async () => {
+    const unit2 = await prisma.unit.create({
+      data: {
+        propertyId: propertyAId,
+        unitNumber: "A2",
+        unitType: "ONE_BEDROOM",
+        standardRent: new Prisma.Decimal("12000.00"),
+      },
+    });
+
+    const lease2 = await prisma.lease.create({
+      data: {
+        tenantId: (
+          await prisma.tenant.findFirstOrThrow({
+            where: { idNumber: `ID-${run}` },
+          })
+        ).id,
+        unitId: unit2.id,
+        propertyId: propertyAId,
+        startDate: new Date("2026-01-01T00:00:00Z"),
+        endDate: new Date("2026-12-31T00:00:00Z"),
+        rentAmount: new Prisma.Decimal("12000.00"),
+        depositAmount: new Prisma.Decimal("12000.00"),
+        status: "ACTIVE",
+      },
+    });
+
+    await prisma.ledgerEntry.create({
+      data: {
+        leaseId: lease2.id,
+        propertyId: propertyAId,
+        type: "RENT",
+        amount: new Prisma.Decimal("10000.00"),
+        description: "Rent",
+        effectiveDate: new Date(),
+      },
+    });
+
+    await request(app)
+      .post("/api/v1/finance/payments")
+      .set("x-property-id", propertyAId)
+      .send({
+        leaseId: lease2.id,
+        propertyId: propertyAId,
+        amount: 10000,
+        method: "CASH",
+        reference: `CASH-${run}-ARREARS`,
+      })
+      .expect(201);
+
+    const response = await request(app)
+      .get(`/api/v1/finance/leases/${lease2.id}/arrears`)
+      .set("x-property-id", propertyAId)
+      .expect(200);
+
+    expect(Number(response.body.data.totalDue)).toBe(10000);
+    expect(Number(response.body.data.currentBalance)).toBe(0);
+    expect(response.body.data.daysOverdue).toBe(0);
+  });
 });
