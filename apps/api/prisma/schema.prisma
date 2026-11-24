@@ -7,6 +7,141 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// This foundation schema intentionally contains no
-// business entities. Domain models will be introduced
-// through reviewed, incremental migrations.
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum PropertyType {
+  APARTMENT
+  BEDSITTER
+  STUDIO
+  SINGLE_ROOM
+  SHARED
+  MAISONETTE
+  BUNGALOW
+  TOWNHOUSE
+  STANDALONE_HOUSE
+}
+
+enum BuildingType {
+  BLOCK
+  WING
+  ROW
+  DETACHED
+  OTHER
+}
+
+enum UnitType {
+  BEDSITTER
+  STUDIO
+  SINGLE_ROOM
+  SHARED_ROOM
+  ONE_BEDROOM
+  TWO_BEDROOM
+  THREE_BEDROOM
+  MAISONETTE
+  BUNGALOW_UNIT
+  TOWNHOUSE_UNIT
+  HOUSE
+  OTHER
+}
+
+enum UnitSizeUnit {
+  SQM
+  SQFT
+}
+
+enum LandlordKind {
+  INDIVIDUAL
+  CORPORATE
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio & Tenancy (Milestone 002A — core inventory)
+// ---------------------------------------------------------------------------
+
+model Landlord {
+  id        String       @id @default(uuid()) @db.Uuid
+  kind      LandlordKind
+  name      String       @db.VarChar(200)
+  // user_id is intentionally deferred: no users/identity tables yet.
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  properties Property[]
+
+  @@map("landlords")
+}
+
+model Property {
+  id            String       @id @default(uuid()) @db.Uuid
+  reference     String       @unique @db.VarChar(32)
+  name          String       @db.VarChar(200)
+  propertyType  PropertyType @map("property_type")
+  description   String?      @db.Text
+  county        String       @db.VarChar(80)
+  town          String?      @db.VarChar(120)
+  neighbourhood String?      @db.VarChar(120)
+  streetAddress String?      @map("street_address") @db.VarChar(200)
+  latitude      Decimal?     @db.Decimal(9, 6)
+  longitude     Decimal?     @db.Decimal(9, 6)
+  landlordId    String       @map("landlord_id") @db.Uuid
+  landlord      Landlord     @relation(fields: [landlordId], references: [id], onDelete: Restrict)
+  notes         String?      @db.Text
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  buildings Building[]
+  units     Unit[]
+
+  @@index([landlordId])
+  @@index([county, town, neighbourhood])
+  @@index([propertyType])
+  @@map("properties")
+}
+
+model Building {
+  id           String        @id @default(uuid()) @db.Uuid
+  propertyId   String        @map("property_id") @db.Uuid
+  property     Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  name         String        @db.VarChar(120)
+  buildingType BuildingType? @map("building_type")
+  floorCount   Int?          @map("floor_count")
+  description  String?       @db.Text
+  notes        String?       @db.Text
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  units Unit[]
+
+  @@unique([propertyId, name])
+  @@index([propertyId])
+  @@map("buildings")
+}
+
+model Unit {
+  id              String        @id @default(uuid()) @db.Uuid
+  propertyId      String        @map("property_id") @db.Uuid
+  property        Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  buildingId      String?       @map("building_id") @db.Uuid
+  building        Building?     @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  unitNumber      String        @map("unit_number") @db.VarChar(32)
+  roomNumber      String?       @map("room_number") @db.VarChar(32)
+  houseNumber     String?       @map("house_number") @db.VarChar(32)
+  floor           Int?
+  unitType        UnitType      @map("unit_type")
+  bedrooms        Int?
+  bathrooms       Int?
+  sizeValue       Decimal?      @map("size_value") @db.Decimal(8, 2)
+  sizeUnit        UnitSizeUnit? @map("size_unit")
+  standardRent    Decimal       @map("standard_rent") @db.Decimal(12, 2)
+  depositRequired Decimal?      @map("deposit_required") @db.Decimal(12, 2)
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([propertyId])
+  @@index([buildingId])
+  @@index([unitType])
+  @@map("units")
+}
