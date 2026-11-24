@@ -7,6 +7,529 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// This foundation schema intentionally contains no
-// business entities. Domain models will be introduced
-// through reviewed, incremental migrations.
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum PropertyType {
+  APARTMENT
+  BEDSITTER
+  STUDIO
+  SINGLE_ROOM
+  SHARED
+  MAISONETTE
+  BUNGALOW
+  TOWNHOUSE
+  STANDALONE_HOUSE
+}
+
+enum BuildingType {
+  BLOCK
+  WING
+  ROW
+  DETACHED
+  OTHER
+}
+
+enum UnitType {
+  BEDSITTER
+  STUDIO
+  SINGLE_ROOM
+  SHARED_ROOM
+  ONE_BEDROOM
+  TWO_BEDROOM
+  THREE_BEDROOM
+  MAISONETTE
+  BUNGALOW_UNIT
+  TOWNHOUSE_UNIT
+  HOUSE
+  OTHER
+}
+
+enum UnitSizeUnit {
+  SQM
+  SQFT
+}
+
+enum LandlordKind {
+  INDIVIDUAL
+  CORPORATE
+}
+
+// ---------------------------------------------------------------------------
+// Enums — Milestone 002B (catalogue & assignment model)
+// ---------------------------------------------------------------------------
+
+enum InventoryLevel {
+  PROPERTY
+  BUILDING
+  UNIT
+}
+
+enum AmenityCategory {
+  FEATURE
+  AMENITY
+  UTILITY
+}
+
+enum AmenityAssignmentMode {
+  INCLUDE
+  EXCLUDE
+}
+
+enum PolicyValueType {
+  BOOLEAN
+  ENUM
+  INTEGER
+  TEXT
+}
+
+enum PolicyAssignmentMode {
+  SET
+  EXCLUDE
+}
+
+enum StorageCleanupStatus {
+  PENDING
+  DONE
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Enums — Milestone 003 (tenant & lease lifecycle)
+// ---------------------------------------------------------------------------
+
+enum LeaseStatus {
+  DRAFT
+  ACTIVE
+  TERMINATED
+  EXPIRED
+}
+
+// ---------------------------------------------------------------------------
+// Enums — Milestone 004 (ledger, payments & idempotency)
+// ---------------------------------------------------------------------------
+
+enum LedgerType {
+  RENT
+  DEPOSIT
+  PENALTY
+  ADJUSTMENT
+}
+
+enum PaymentMethod {
+  MPESA
+  CASH
+  BANK
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Enums — Milestone 005 (maintenance & work orders)
+// ---------------------------------------------------------------------------
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CANCELLED
+}
+
+enum TicketInitiator {
+  TENANT
+  MANAGER
+}
+
+// ---------------------------------------------------------------------------
+// Enums — Milestone 007 (tenant notices & reconciliation)
+// ---------------------------------------------------------------------------
+
+enum NoticeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio & Tenancy (Milestone 002A — core inventory)
+// ---------------------------------------------------------------------------
+
+model Landlord {
+  id        String       @id @default(uuid()) @db.Uuid
+  kind      LandlordKind
+  name      String       @db.VarChar(200)
+  // user_id is intentionally deferred: no users/identity tables yet.
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  properties Property[]
+
+  @@map("landlords")
+}
+
+model Property {
+  id            String       @id @default(uuid()) @db.Uuid
+  reference     String       @unique @db.VarChar(32)
+  name          String       @db.VarChar(200)
+  propertyType  PropertyType @map("property_type")
+  description   String?      @db.Text
+  county        String       @db.VarChar(80)
+  town          String?      @db.VarChar(120)
+  neighbourhood String?      @db.VarChar(120)
+  streetAddress String?      @map("street_address") @db.VarChar(200)
+  latitude      Decimal?     @db.Decimal(9, 6)
+  longitude     Decimal?     @db.Decimal(9, 6)
+  landlordId    String       @map("landlord_id") @db.Uuid
+  landlord      Landlord     @relation(fields: [landlordId], references: [id], onDelete: Restrict)
+  notes         String?      @db.Text
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  buildings          Building[]
+  units              Unit[]
+  leases             Lease[]
+  ledgerEntries      LedgerEntry[]
+  payments           Payment[]
+  maintenanceTickets MaintenanceTicket[]
+  tenantNotices      TenantNotice[]
+
+  @@index([landlordId])
+  @@index([county, town, neighbourhood])
+  @@index([propertyType])
+  @@map("properties")
+}
+
+model Building {
+  id           String        @id @default(uuid()) @db.Uuid
+  propertyId   String        @map("property_id") @db.Uuid
+  property     Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  name         String        @db.VarChar(120)
+  buildingType BuildingType? @map("building_type")
+  floorCount   Int?          @map("floor_count")
+  description  String?       @db.Text
+  notes        String?       @db.Text
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  units Unit[]
+
+  @@unique([propertyId, name])
+  @@index([propertyId])
+  @@map("buildings")
+}
+
+model Unit {
+  id              String        @id @default(uuid()) @db.Uuid
+  propertyId      String        @map("property_id") @db.Uuid
+  property        Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  buildingId      String?       @map("building_id") @db.Uuid
+  building        Building?     @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  unitNumber      String        @map("unit_number") @db.VarChar(32)
+  roomNumber      String?       @map("room_number") @db.VarChar(32)
+  houseNumber     String?       @map("house_number") @db.VarChar(32)
+  floor           Int?
+  unitType        UnitType      @map("unit_type")
+  bedrooms        Int?
+  bathrooms       Int?
+  sizeValue       Decimal?      @map("size_value") @db.Decimal(8, 2)
+  sizeUnit        UnitSizeUnit? @map("size_unit")
+  standardRent    Decimal       @map("standard_rent") @db.Decimal(12, 2)
+  depositRequired Decimal?      @map("deposit_required") @db.Decimal(12, 2)
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  leases           Lease[]
+  maintenanceTickets MaintenanceTicket[]
+
+  @@index([propertyId])
+  @@index([buildingId])
+  @@index([unitType])
+  @@map("units")
+}
+
+// ---------------------------------------------------------------------------
+// Catalogue & Assignment (Milestone 002B)
+//
+// target_id, composite FKs, CHECK constraints and partial unique indexes are
+// added in the migration via raw SQL (Prisma cannot express them).
+// ---------------------------------------------------------------------------
+
+model Amenity {
+  id        String          @id @default(uuid()) @db.Uuid
+  key       String          @unique @db.VarChar(64)
+  name      String          @db.VarChar(120)
+  category  AmenityCategory
+  active    Boolean         @default(true)
+  deletedAt DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("amenities")
+}
+
+model PolicyDefinition {
+  id         String          @id @default(uuid()) @db.Uuid
+  key        String          @unique @db.VarChar(64)
+  name       String          @db.VarChar(120)
+  valueType  PolicyValueType @map("value_type")
+  enumValues String[]        @default([]) @map("enum_values")
+  active     Boolean         @default(true)
+  deletedAt  DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("policy_definitions")
+}
+
+model AmenityAssignment {
+  id         String                @id @default(uuid()) @db.Uuid
+  amenityId  String                @map("amenity_id") @db.Uuid
+  level      InventoryLevel
+  propertyId String                @map("property_id") @db.Uuid
+  buildingId String?               @map("building_id") @db.Uuid
+  unitId     String?               @map("unit_id") @db.Uuid
+  mode       AmenityAssignmentMode
+  createdAt  DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([amenityId])
+  @@index([propertyId])
+  @@map("amenity_assignments")
+}
+
+model PolicyAssignment {
+  id         String               @id @default(uuid()) @db.Uuid
+  policyId   String               @map("policy_id") @db.Uuid
+  valueType  PolicyValueType      @map("value_type")
+  level      InventoryLevel
+  propertyId String               @map("property_id") @db.Uuid
+  buildingId String?              @map("building_id") @db.Uuid
+  unitId     String?              @map("unit_id") @db.Uuid
+  mode       PolicyAssignmentMode
+  valueBool  Boolean?             @map("value_bool")
+  valueEnum  String?              @map("value_enum") @db.VarChar(64)
+  valueInt   Int?                 @map("value_int")
+  valueText  String?              @map("value_text") @db.Text
+  createdAt  DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([policyId])
+  @@index([propertyId])
+  @@map("policy_assignments")
+}
+
+model InventoryImage {
+  id                   String               @id @default(uuid()) @db.Uuid
+  level                InventoryLevel
+  propertyId           String               @map("property_id") @db.Uuid
+  buildingId           String?              @map("building_id") @db.Uuid
+  unitId               String?              @map("unit_id") @db.Uuid
+  storageProvider      String               @map("storage_provider") @db.VarChar(40)
+  storageKey           String               @map("storage_key") @db.VarChar(512)
+  mimeType             String               @map("mime_type") @db.VarChar(128)
+  fileSize             Int                  @map("file_size")
+  width                Int?
+  height               Int?
+  originalFilename     String               @map("original_filename") @db.VarChar(255)
+  caption              String?              @db.VarChar(500)
+  sortOrder            Int                  @default(0) @map("sort_order")
+  isPrimary            Boolean              @default(false) @map("is_primary")
+  deletedAt            DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  storageCleanupStatus StorageCleanupStatus @default(PENDING) @map("storage_cleanup_status")
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([propertyId])
+  @@map("inventory_images")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy (Milestone 003 — tenant & lease lifecycle)
+//
+// The "one ACTIVE lease per unit" rule is a PARTIAL unique index added in the
+// migration (Prisma cannot express it). A full @@unique([tenantId, status])
+// is intentionally NOT used: it would forbid multiple historical
+// TERMINATED/EXPIRED leases for the same tenant.
+// ---------------------------------------------------------------------------
+
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  firstName String   @map("first_name") @db.VarChar(120)
+  lastName  String   @map("last_name") @db.VarChar(120)
+  phone     String   @db.VarChar(32)
+  email     String?  @db.VarChar(255)
+  idNumber  String   @unique @map("id_number") @db.VarChar(32)
+  riskScore Int      @default(0) @map("risk_score")
+  riskFlags String[] @default([]) @map("risk_flags")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  leases Lease[]
+  tenantNotices TenantNotice[]
+
+  @@index([phone])
+  @@map("tenants")
+}
+
+model Lease {
+  id               String      @id @default(uuid()) @db.Uuid
+  tenantId         String      @map("tenant_id") @db.Uuid
+  tenant           Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  unitId           String      @map("unit_id") @db.Uuid
+  unit             Unit        @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  propertyId       String      @map("property_id") @db.Uuid
+  property         Property    @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  startDate        DateTime    @map("start_date") @db.Timestamptz(6)
+  endDate          DateTime    @map("end_date") @db.Timestamptz(6)
+  noticePeriodDays Int         @default(30) @map("notice_period_days")
+  rentAmount       Decimal     @map("rent_amount") @db.Decimal(12, 2)
+  depositAmount    Decimal     @map("deposit_amount") @db.Decimal(12, 2)
+  status           LeaseStatus @default(DRAFT)
+  terminatedAt     DateTime?   @map("terminated_at") @db.Timestamptz(6)
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  ledgerEntries LedgerEntry[]
+  payments      Payment[]
+  tenantNotices TenantNotice[]
+
+  @@index([tenantId])
+  @@index([unitId])
+  @@index([propertyId])
+  @@index([status])
+  @@map("leases")
+}
+
+// ---------------------------------------------------------------------------
+// Ledger & Payments (Milestone 004)
+//
+// Ledger entries are append-only; corrections add ADJUSTMENT rows. Payment
+// references are unique so duplicate M-Pesa callbacks are safely rejected.
+// ---------------------------------------------------------------------------
+
+model LedgerEntry {
+  id            String     @id @default(uuid()) @db.Uuid
+  leaseId       String     @map("lease_id") @db.Uuid
+  lease         Lease      @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+  propertyId    String     @map("property_id") @db.Uuid
+  property      Property   @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  type          LedgerType
+  amount        Decimal    @db.Decimal(12, 2)
+  description   String     @db.VarChar(255)
+  effectiveDate DateTime   @map("effective_date") @db.Timestamptz(6)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([leaseId])
+  @@index([propertyId])
+  @@index([type])
+  @@index([effectiveDate])
+  @@map("ledger_entries")
+}
+
+model Payment {
+  id         String        @id @default(uuid()) @db.Uuid
+  leaseId    String        @map("lease_id") @db.Uuid
+  lease      Lease         @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+  propertyId String        @map("property_id") @db.Uuid
+  property   Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  amount     Decimal       @db.Decimal(12, 2)
+  method     PaymentMethod
+  reference  String        @unique @db.VarChar(100)
+  status     PaymentStatus @default(PENDING)
+  receivedAt DateTime      @map("received_at") @db.Timestamptz(6)
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([leaseId])
+  @@index([propertyId])
+  @@index([status])
+  @@map("payments")
+}
+
+model IdempotencyKey {
+  key             String   @id @db.VarChar(100)
+  responsePayload Json?    @map("response_payload")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt       DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+// ---------------------------------------------------------------------------
+// Maintenance (Milestone 005 — work orders)
+//
+// initiator_id is a flexible string (tenant or user id) because identity
+// tables are not implemented yet (ADR-004). The composite
+// (unit_id, property_id) FK is added in the migration.
+// ---------------------------------------------------------------------------
+
+model MaintenanceTicket {
+  id              String          @id @default(uuid()) @db.Uuid
+  propertyId      String          @map("property_id") @db.Uuid
+  property        Property        @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  unitId          String          @map("unit_id") @db.Uuid
+  unit            Unit            @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  initiatedBy     TicketInitiator @map("initiated_by")
+  initiatorId     String          @map("initiator_id") @db.VarChar(64)
+  title           String          @db.VarChar(200)
+  description     String          @db.Text
+  priority        TicketPriority  @default(MEDIUM)
+  status          TicketStatus    @default(OPEN)
+  estimatedCost   Decimal?        @map("estimated_cost") @db.Decimal(12, 2)
+  actualCost      Decimal?        @default(0) @map("actual_cost") @db.Decimal(12, 2)
+  resolutionNotes String?         @map("resolution_notes") @db.Text
+  resolvedAt      DateTime?       @map("resolved_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([status])
+  @@index([priority])
+  @@map("maintenance_tickets")
+}
+
+// ---------------------------------------------------------------------------
+// Tenant notices (Milestone 007)
+//
+// Tracks vacation/termination notices. The 30-day minimum notice period is
+// enforced in the service layer against the lease noticePeriodDays.
+// ---------------------------------------------------------------------------
+
+model TenantNotice {
+  id                 String       @id @default(uuid()) @db.Uuid
+  leaseId            String       @map("lease_id") @db.Uuid
+  lease              Lease        @relation(fields: [leaseId], references: [id], onDelete: Restrict)
+  propertyId         String       @map("property_id") @db.Uuid
+  property           Property     @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  tenantId           String       @map("tenant_id") @db.Uuid
+  tenant             Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  noticeDate         DateTime     @map("notice_date") @db.Timestamptz(6)
+  intendedMoveOutDate DateTime    @map("intended_move_out_date") @db.Timestamptz(6)
+  status             NoticeStatus @default(PENDING)
+  reason             String?      @db.VarChar(500)
+  reviewedBy         String?      @map("reviewed_by") @db.VarChar(64)
+  reviewedAt         DateTime?    @map("reviewed_at") @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([leaseId])
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([status])
+  @@map("tenant_notices")
+}

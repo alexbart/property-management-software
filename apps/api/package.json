@@ -16,6 +16,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@property-platform/contracts": "workspace:*",
     "@prisma/client": "6.19.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.10",
