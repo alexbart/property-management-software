@@ -17,6 +17,21 @@ jobs:
   quality:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: property_management
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d property_management"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
       NODE_ENV: test
       API_PORT: 4000
@@ -43,6 +58,9 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm --filter @property-platform/api db:generate
+
+      - name: Apply database migrations
+        run: pnpm --filter @property-platform/api exec prisma migrate deploy
 
       - name: Type check
         run: pnpm typecheck
