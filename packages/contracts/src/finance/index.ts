@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+// Kenyan phone number in 2547XXXXXXXX format (Safaricom)
+export const kenyanPhoneNumber = z
+  .string()
+  .regex(/^254[17]\d{8}$/, "Phone number must be in 2547XXXXXXXX format");
+
 // Money is transported as a decimal string (or a JSON number for convenience)
 // and normalised to a string so the API can build an exact Prisma.Decimal.
 // Never perform floating-point arithmetic on money.
@@ -81,3 +86,19 @@ export const ReconciliationSummaryDto = z.object({
 export type ReconciliationSummaryDto = z.infer<
   typeof ReconciliationSummaryDto
 >;
+
+export const InitiateStkPushDto = z.object({
+  leaseId: z.string().uuid(),
+  amount: decimalAmount,
+  phoneNumber: kenyanPhoneNumber,
+});
+export type InitiateStkPushDto = z.infer<typeof InitiateStkPushDto>;
+
+export const StkPushResponseDto = z.object({
+  checkoutRequestId: z.string().min(1),
+  merchantRequestId: z.string().min(1),
+  responseCode: z.string(),
+  responseDescription: z.string(),
+  customerMessage: z.string(),
+});
+export type StkPushResponseDto = z.infer<typeof StkPushResponseDto>;
