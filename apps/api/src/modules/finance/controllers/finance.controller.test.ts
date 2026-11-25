@@ -1,8 +1,9 @@
 import "dotenv/config";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { app } from "../../../app.js";
+import { darajaService } from "../services/daraja.service.js";
 
 const prisma = new PrismaClient();
 const run = `m004-api-${Date.now()}`;
@@ -235,5 +236,164 @@ describe.skipIf(!process.env.DATABASE_URL)("finance API", () => {
     expect(Number(response.body.data.totalDue)).toBe(10000);
     expect(Number(response.body.data.currentBalance)).toBe(0);
     expect(response.body.data.daysOverdue).toBe(0);
+  });
+
+  describe("STK Push Initiation", () => {
+    let stkPushLeaseId: string;
+    let stkPushUnitId: string;
+
+    beforeAll(async () => {
+      // Create a separate lease for STK push tests with a rent charge
+      const building = await prisma.building.create({
+        data: { propertyId: propertyAId, name: "Block B", buildingType: "BLOCK" },
+      });
+
+      stkPushUnitId = (await prisma.unit.create({
+        data: {
+          propertyId: propertyAId,
+          buildingId: building.id,
+          unitNumber: "B1",
+          unitType: "ONE_BEDROOM",
+          standardRent: new Prisma.Decimal("15000.00"),
+        },
+      })).id;
+
+      const tenant = await prisma.tenant.create({
+        data: {
+          firstName: "John",
+          lastName: "Smith",
+          phone: "254712345678",
+          idNumber: `ID-${run}-STK`,
+        },
+      });
+
+      const lease = await prisma.lease.create({
+        data: {
+          tenantId: tenant.id,
+          unitId: stkPushUnitId,
+          propertyId: propertyAId,
+          startDate: new Date("2026-01-01T00:00:00Z"),
+          endDate: new Date("2026-12-31T00:00:00Z"),
+          rentAmount: new Prisma.Decimal("15000.00"),
+          depositAmount: new Prisma.Decimal("15000.00"),
+          status: "ACTIVE",
+        },
+      });
+      stkPushLeaseId = lease.id;
+
+      // Create a rent charge so there's arrears to pay
+      await prisma.ledgerEntry.create({
+        data: {
+          leaseId: stkPushLeaseId,
+          propertyId: propertyAId,
+          type: "RENT",
+          amount: new Prisma.Decimal("15000.00"),
+          description: "Rent for January",
+          effectiveDate: new Date("2026-01-01"),
+        },
+      });
+    });
+
+    afterAll(async () => {
+      if (stkPushLeaseId) {
+        await prisma.ledgerEntry.deleteMany({ where: { leaseId: stkPushLeaseId } });
+        await prisma.payment.deleteMany({ where: { leaseId: stkPushLeaseId } });
+        await prisma.lease.deleteMany({ where: { id: stkPushLeaseId } });
+      }
+      if (stkPushUnitId) {
+        await prisma.unit.deleteMany({ where: { id: stkPushUnitId } });
+      }
+      await prisma.tenant.deleteMany({ where: { idNumber: `ID-${run}-STK` } });
+    });
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      darajaService.clearTokenCache();
+    });
+
+    it("initiates STK push and creates PENDING payment record", async () => {
+      const mockDarajaResponse = {
+        checkoutRequestId: "ws_CO_TEST123",
+        merchantRequestId: "mr_TEST123",
+        responseCode: "0",
+        responseDescription: "Success. Request accepted for processing",
+        customerMessage: "Success. Request accepted for processing",
+      };
+
+      vi.spyOn(darajaService, "initiateStkPush").mockResolvedValue(mockDarajaResponse);
+
+      const response = await request(app)
+        .post("/api/v1/finance/payments/stk-push")
+        .set("x-property-id", propertyAId)
+        .send({
+          leaseId: stkPushLeaseId,
+          amount: "15000.00",
+          phoneNumber: "254712345678",
+        })
+        .expect(200);
+
+      expect(response.body.data).toEqual(mockDarajaResponse);
+
+      // Verify PENDING payment record was created
+      const payments = await prisma.payment.findMany({
+        where: { leaseId: stkPushLeaseId, status: "PENDING" },
+      });
+      expect(payments).toHaveLength(1);
+      expect(payments[0].amount).toEqual(new Prisma.Decimal("15000.00"));
+      expect(payments[0].method).toBe("MPESA");
+      expect(payments[0].reference).toMatch(/^PAY-\d+-/);
+    });
+
+    it("rejects STK push for lease outside property scope", async () => {
+      vi.spyOn(darajaService, "initiateStkPush").mockResolvedValue({
+        checkoutRequestId: "ws_CO_TEST",
+        merchantRequestId: "mr_TEST",
+        responseCode: "0",
+        responseDescription: "Success",
+        customerMessage: "Success",
+      });
+
+      await request(app)
+        .post("/api/v1/finance/payments/stk-push")
+        .set("x-property-id", propertyBId)
+        .send({
+          leaseId: stkPushLeaseId,
+          amount: "15000.00",
+          phoneNumber: "254712345678",
+        })
+        .expect(403);
+    });
+
+    it("rejects STK push when amount exceeds current balance", async () => {
+      vi.spyOn(darajaService, "initiateStkPush").mockResolvedValue({
+        checkoutRequestId: "ws_CO_TEST",
+        merchantRequestId: "mr_TEST",
+        responseCode: "0",
+        responseDescription: "Success",
+        customerMessage: "Success",
+      });
+
+      await request(app)
+        .post("/api/v1/finance/payments/stk-push")
+        .set("x-property-id", propertyAId)
+        .send({
+          leaseId: stkPushLeaseId,
+          amount: "20000.00", // Exceeds the 15000 balance
+          phoneNumber: "254712345678",
+        })
+        .expect(409); // ConflictException returns 409
+    });
+
+    it("rejects STK push with invalid phone number format", async () => {
+      await request(app)
+        .post("/api/v1/finance/payments/stk-push")
+        .set("x-property-id", propertyAId)
+        .send({
+          leaseId: stkPushLeaseId,
+          amount: "15000.00",
+          phoneNumber: "0712345678", // Invalid format
+        })
+        .expect(400);
+    });
   });
 });

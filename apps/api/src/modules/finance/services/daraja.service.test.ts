@@ -33,7 +33,10 @@ describe('DarajaService', () => {
       get: mockGet,
       post: mockPost,
       defaults: { headers: {} },
-    } as ReturnType<typeof axios.create>);
+      interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+      getUri: vi.fn(),
+      request: vi.fn(),
+    } as unknown as ReturnType<typeof axios.create>);
 
     service = new DarajaService();
     service.clearTokenCache();

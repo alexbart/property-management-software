@@ -1,5 +1,7 @@
 import type { Payment, PaymentMethod, Prisma } from "@prisma/client";
 import { prisma } from "../../../database/prisma.js";
+import { darajaService } from "./daraja.service.js";
+import { calculateLeaseArrears } from "./arrears.service.js";
 
 /** Thrown when a lease is not found within the caller's property scope. */
 export class NotFoundException extends Error {
@@ -120,4 +122,78 @@ export async function recordPayment(
     }
     throw error;
   }
+}
+
+/**
+ * Initiate an M-Pesa STK Push for a lease payment.
+ *
+ * Verifies the lease belongs to the property, validates the amount against
+ * current arrears, creates a PENDING payment record, and triggers the STK push.
+ */
+export async function requestStkPush(
+  leaseId: string,
+  propertyId: string,
+  amount: Prisma.Decimal,
+  phoneNumber: string,
+): Promise<{
+  checkoutRequestId: string;
+  merchantRequestId: string;
+  responseCode: string;
+  responseDescription: string;
+  customerMessage: string;
+  paymentId: string;
+}> {
+  return prisma.$transaction(async (tx) => {
+    const lease = await tx.lease.findFirst({
+      where: { id: leaseId, propertyId },
+      include: { unit: true, tenant: true },
+    });
+    if (!lease) {
+      throw new NotFoundException(
+        `Lease ${leaseId} not found for property ${propertyId}`,
+      );
+    }
+
+    // Get current arrears to validate amount
+    const arrears = await calculateLeaseArrears(leaseId, propertyId);
+    
+    // Allow payment up to the current balance
+    if (amount.greaterThan(arrears.currentBalance)) {
+      throw new ConflictException(
+        `Amount ${amount} exceeds current balance ${arrears.currentBalance}`,
+      );
+    }
+
+    // Generate unique internal reference
+    const reference = `PAY-${Date.now()}-${leaseId.slice(-8)}`;
+
+    // Create PENDING payment record (receivedAt is required, use createdAt as placeholder)
+    const payment = await tx.payment.create({
+      data: {
+        leaseId,
+        propertyId,
+        amount,
+        method: "MPESA",
+        reference,
+        status: "PENDING",
+        receivedAt: new Date(),
+      },
+    });
+
+    // Initiate STK push via Daraja
+    const accountReference = `LEASE-${leaseId.slice(-8)}`;
+    const transactionDesc = `Rent payment for unit ${lease.unit?.unitNumber ?? leaseId}`;
+
+    const darajaResponse = await darajaService.initiateStkPush(
+      phoneNumber,
+      amount.toString(),
+      accountReference,
+      transactionDesc,
+    );
+
+    return {
+      ...darajaResponse,
+      paymentId: payment.id,
+    };
+  });
 }

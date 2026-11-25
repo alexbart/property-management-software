@@ -2,17 +2,20 @@ import type { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 import {
-  LeaseBalanceParamsDto,
-  MpesaCallbackDto,
-  RecordPaymentDto,
-} from "@property-platform/contracts";
-import { prisma } from "../../../database/prisma.js";
-import {
   ConflictException,
   NotFoundException,
   recordPayment,
+  requestStkPush,
 } from "../services/finance.service.js";
 import { calculateLeaseArrears } from "../services/arrears.service.js";
+import {
+  InitiateStkPushDto,
+  LeaseBalanceParamsDto,
+  MpesaCallbackDto,
+  RecordPaymentDto,
+  StkPushResponseDto,
+} from "@property-platform/contracts";
+import { prisma } from "../../../database/prisma.js";
 
 function scopePropertyId(res: Response): string {
   return res.locals.propertyId as string;
@@ -147,6 +150,36 @@ export async function getBalanceHandler(
     const { leaseId } = LeaseBalanceParamsDto.parse(req.params);
     const balance = await calculateLeaseArrears(leaseId, scopePropertyId(res));
     res.status(200).json({ data: balance });
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+/** Initiate M-Pesa STK Push for a lease payment. */
+export async function initiateStkPushHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const body = InitiateStkPushDto.parse(req.body);
+    const scope = scopePropertyId(res);
+
+    const result = await requestStkPush(
+      body.leaseId,
+      scope,
+      new Prisma.Decimal(body.amount),
+      body.phoneNumber,
+    );
+
+    const response: StkPushResponseDto = {
+      checkoutRequestId: result.checkoutRequestId,
+      merchantRequestId: result.merchantRequestId,
+      responseCode: result.responseCode,
+      responseDescription: result.responseDescription,
+      customerMessage: result.customerMessage,
+    };
+
+    res.status(200).json({ data: response });
   } catch (error) {
     handleError(res, error);
   }

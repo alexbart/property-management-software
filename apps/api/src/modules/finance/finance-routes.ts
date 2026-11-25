@@ -4,6 +4,7 @@ import { getArrearsHandler } from "./controllers/arrears.controller.js";
 import {
   createManualPaymentHandler,
   getBalanceHandler,
+  initiateStkPushHandler,
   mpesaWebhookHandler,
 } from "./controllers/finance.controller.js";
 import { getReconciliationHandler } from "./controllers/reconciliation.controller.js";
@@ -16,6 +17,7 @@ financeRouter.post("/webhooks/mpesa", mpesaWebhookHandler);
 // Scoped routes apply the property scope individually so unrelated /api/v1
 // routes (e.g. health) are not affected.
 financeRouter.post("/finance/payments", propertyScope, createManualPaymentHandler);
+financeRouter.post("/finance/payments/stk-push", propertyScope, initiateStkPushHandler);
 financeRouter.get(
   "/finance/leases/:leaseId/balance",
   propertyScope,
