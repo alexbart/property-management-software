@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { env } from "./config/env.js";
 import { sessionMiddleware } from "./config/session.js";
+import { originCheck } from "./middleware/origin-check.js";
 import { prisma } from "./database/prisma.js";
 import { inventoryRouter } from "./modules/inventory/inventory-routes.js";
 import { leaseRouter } from "./modules/lease/lease-routes.js";
@@ -27,6 +28,9 @@ app.use(express.json({ limit: "1mb" }));
 
 // Cookie session (Postgres store). Must run before any route.
 app.use(sessionMiddleware);
+
+// CSRF defence for mutating routes (no Origin/Referer => server-to-server).
+app.use(originCheck);
 
 // Inventory read model (catalogue + effective configuration).
 app.use("/api/v1/inventory", inventoryRouter);

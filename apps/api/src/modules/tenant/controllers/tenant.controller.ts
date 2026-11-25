@@ -38,7 +38,33 @@ export async function evaluateRiskHandler(
 
     res.status(200).json({
       data: { riskScore: result.riskScore, riskFlags: result.riskFlags },
+});
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+/** List tenants with leases in the caller's property, ranked by risk. */
+export async function listTenantsHandler(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const scope = res.locals.propertyId as string;
+    const tenants = await prisma.tenant.findMany({
+      where: { leases: { some: { propertyId: scope } } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        riskScore: true,
+        riskFlags: true,
+      },
+      orderBy: { riskScore: "desc" },
     });
+
+    res.status(200).json({ data: tenants });
   } catch (error) {
     handleError(res, error);
   }

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireRole } from "../../middleware/require-role.js";
 import { propertyScope } from "../lease/middleware/property-scope.js";
 import { getArrearsHandler } from "./controllers/arrears.controller.js";
 import {
@@ -15,7 +16,12 @@ financeRouter.post("/webhooks/mpesa", mpesaWebhookHandler);
 
 // Scoped routes apply the property scope individually so unrelated /api/v1
 // routes (e.g. health) are not affected.
-financeRouter.post("/finance/payments", propertyScope, createManualPaymentHandler);
+financeRouter.post(
+  "/finance/payments",
+  propertyScope,
+  requireRole(["LANDLORD", "MANAGER"]),
+  createManualPaymentHandler,
+);
 financeRouter.get(
   "/finance/leases/:leaseId/balance",
   propertyScope,

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireRole } from "../../middleware/require-role.js";
 import {
   activateLeaseHandler,
   createLeaseHandler,
@@ -8,10 +9,11 @@ import { propertyScope } from "./middleware/property-scope.js";
 
 export const leaseRouter: Router = Router();
 
-// Every lease operation is scoped to the caller's property (placeholder
-// header-based scope until ADR-004 authentication is implemented).
+// Every lease operation is scoped to the caller's property.
 leaseRouter.use(propertyScope);
 
-leaseRouter.post("/", createLeaseHandler);
-leaseRouter.post("/:id/activate", activateLeaseHandler);
-leaseRouter.post("/:id/terminate", terminateLeaseHandler);
+const managerOnly = requireRole(["LANDLORD", "MANAGER"]);
+
+leaseRouter.post("/", managerOnly, createLeaseHandler);
+leaseRouter.post("/:id/activate", managerOnly, activateLeaseHandler);
+leaseRouter.post("/:id/terminate", managerOnly, terminateLeaseHandler);
