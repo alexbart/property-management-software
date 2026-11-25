@@ -9,6 +9,12 @@ const envSchema = z.object({
   WEB_ORIGIN: z.string().url(),
   DATABASE_URL: z.string().min(1),
   SESSION_SECRET: z.string().min(32),
+  MPESA_CONSUMER_KEY: z.string().min(1),
+  MPESA_CONSUMER_SECRET: z.string().min(1),
+  MPESA_SHORTCODE: z.string().min(1),
+  MPESA_PASSKEY: z.string().min(1),
+  MPESA_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
+  MPESA_CALLBACK_URL: z.string().url(),
 });
 
 const parsed = envSchema.safeParse(process.env);
