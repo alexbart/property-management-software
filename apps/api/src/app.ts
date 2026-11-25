@@ -4,12 +4,14 @@ import helmet from "helmet";
 import { env } from "./config/env.js";
 import { sessionMiddleware } from "./config/session.js";
 import { originCheck } from "./middleware/origin-check.js";
+import { devBypass } from "./middleware/dev-bypass.js";
 import { prisma } from "./database/prisma.js";
 import { inventoryRouter } from "./modules/inventory/inventory-routes.js";
 import { leaseRouter } from "./modules/lease/lease-routes.js";
 import { financeRouter } from "./modules/finance/finance-routes.js";
 import { maintenanceRouter } from "./modules/maintenance/maintenance-routes.js";
 import { tenantRouter } from "./modules/tenant/tenant-routes.js";
+import { authRouter } from "./modules/auth/auth-routes.js";
 
 export const app: ReturnType<typeof express> = express();
 
@@ -29,8 +31,14 @@ app.use(express.json({ limit: "1mb" }));
 // Cookie session (Postgres store). Must run before any route.
 app.use(sessionMiddleware);
 
+// Development-only auth bypass (before routes).
+app.use(devBypass);
+
 // CSRF defence for mutating routes (no Origin/Referer => server-to-server).
 app.use(originCheck);
+
+// Auth routes (login, register, logout, me)
+app.use("/api/v1/auth", authRouter);
 
 // Inventory read model (catalogue + effective configuration).
 app.use("/api/v1/inventory", inventoryRouter);

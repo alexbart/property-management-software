@@ -2,14 +2,21 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
-import App from "./App";
+import { AuthProvider } from "./lib/auth";
+import LoginPage from "./pages/LoginPage";
 
-describe("App", () => {
-  it("renders the platform title", () => {
+describe("LoginPage", () => {
+  it("renders the login form", () => {
     const html = renderToString(
-      createElement(MemoryRouter, null, createElement(App)),
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(AuthProvider, null, createElement(LoginPage)),
+      ),
     );
 
-    expect(html).toContain("Property Management Platform");
+    expect(html).toContain("Sign in");
+    expect(html).toContain("Email");
+    expect(html).toContain("Password");
   });
 });

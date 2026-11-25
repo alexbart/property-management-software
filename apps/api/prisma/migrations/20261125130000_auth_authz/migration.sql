@@ -41,7 +41,7 @@ CREATE TABLE "tenant_links" (
 CREATE TABLE "sessions" (
     "sid" VARCHAR(128) NOT NULL,
     "sess" JSONB NOT NULL,
-    "expires" TIMESTAMPTZ(6) NOT NULL,
+    "expire" TIMESTAMPTZ(6) NOT NULL,
 
     CONSTRAINT "sessions_pkey" PRIMARY KEY ("sid")
 );
@@ -62,7 +62,7 @@ CREATE UNIQUE INDEX "tenant_links_user_id_key" ON "tenant_links"("user_id");
 CREATE UNIQUE INDEX "tenant_links_tenant_id_key" ON "tenant_links"("tenant_id");
 
 -- CreateIndex
-CREATE INDEX "sessions_expires_idx" ON "sessions"("expires");
+CREATE INDEX "sessions_expire_idx" ON "sessions"("expire");
 
 -- AddForeignKey
 ALTER TABLE "property_memberships" ADD CONSTRAINT "property_memberships_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

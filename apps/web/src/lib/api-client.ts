@@ -1,5 +1,4 @@
 const DEFAULT_API_URL = "http://localhost:4000";
-const DEFAULT_PROPERTY_ID = "prop_123";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -18,18 +17,11 @@ interface ApiClientOptions extends RequestInit {
   schema?: { parse(data: unknown): unknown };
 }
 
-function resolvePropertyId(): string {
-  if (typeof window === "undefined") {
-    return DEFAULT_PROPERTY_ID;
-  }
-  return window.localStorage.getItem("mock-property-id") ?? DEFAULT_PROPERTY_ID;
-}
-
 /**
  * Typed fetch wrapper for the backend.
  *
  * - Prepends `VITE_API_URL`.
- * - Injects the `x-property-id` header (mock property context until ADR-004).
+ * - Sends cookies (credentials: 'include') for session auth.
  * - Sends JSON.
  * - Throws `ApiError` on non-2xx responses.
  * - Optionally validates the response with a shared contract schema.
@@ -43,9 +35,9 @@ export async function apiClient<T>(
 
   const response = await fetch(`${baseUrl}${endpoint}`, {
     ...init,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      "x-property-id": resolvePropertyId(),
       ...headers,
     },
   });

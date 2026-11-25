@@ -594,10 +594,10 @@ model TenantLink {
 }
 
 model Session {
-  sid     String   @id @db.VarChar(128)
-  sess    Json
-  expires DateTime
+  sid    String   @id @db.VarChar(128)
+  sess   Json
+  expire DateTime @map("expire")
 
-  @@index([expires])
+  @@index([expire])
   @@map("sessions")
 }

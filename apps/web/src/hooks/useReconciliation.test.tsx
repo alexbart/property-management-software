@@ -49,13 +49,11 @@ describe("useReconciliation", () => {
     expect(result.current.data?.estimatedNOI).toBe("12500");
     expect(result.current.data?.totalCollected).toBe("15000");
 
-    const [url, init] = vi.mocked(globalThis.fetch).mock.calls[0];
+    const [url] = vi.mocked(globalThis.fetch).mock.calls[0];
     expect(String(url)).toContain(
       "/api/v1/finance/properties/prop_123/reconciliation",
     );
     expect(String(url)).toContain("startDate=2026-01-01");
-    expect(
-      (init?.headers as Record<string, string>)["x-property-id"],
-    ).toBe("prop_123");
+    // x-property-id header removed - using cookie-based auth now
   });
 });

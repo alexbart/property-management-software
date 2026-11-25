@@ -8,12 +8,18 @@ const PgSession = connectPgSimple(session);
 
 const pool = new Pool({ connectionString: env.DATABASE_URL });
 
+const sessionStore = new PgSession({
+  pool,
+  tableName: "sessions",
+  createTableIfMissing: false,
+});
+
+sessionStore.on("error", (err) => {
+  console.error("Session store error:", err);
+});
+
 export const sessionMiddleware: RequestHandler = session({
-  store: new PgSession({
-    pool,
-    // The sessions table is created by migration 011_auth_authz.
-    createTableIfMissing: false,
-  }),
+  store: sessionStore,
   secret: env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,

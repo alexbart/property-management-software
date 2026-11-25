@@ -3,19 +3,22 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { app } from "../../app.js";
+import { hashPassword } from "../auth/services/auth.service.js";
 
 const prisma = new PrismaClient();
 const run = `m002b-api-${Date.now()}`;
 const reference = `A-${run}`;
 
 describe.skipIf(!process.env.DATABASE_URL)("inventory API", () => {
-  let landlordId!: string;
-  let propertyId!: string;
-  let buildingId!: string;
-  let unitId!: string;
-  let liftId!: string;
-  let parkingId!: string;
-  let petsId!: string;
+  let landlordId: string;
+  let propertyId: string;
+  let buildingId: string;
+  let unitId: string;
+  let liftId: string;
+  let parkingId: string;
+  let petsId: string;
+  let testUserId: string;
+  let agent: request.Agent;
 
   beforeAll(async () => {
     const landlord = await prisma.landlord.create({
@@ -96,10 +99,24 @@ describe.skipIf(!process.env.DATABASE_URL)("inventory API", () => {
         valueBool: true,
       },
     });
+
+    // Create test user and login
+    const { passwordHash, passwordSalt } = await hashPassword("password123");
+    const user = await prisma.user.create({
+      data: { email: `test-${run}@example.com`, passwordHash, passwordSalt, role: "MANAGER", active: true },
+    });
+    testUserId = user.id;
+    await prisma.propertyMembership.create({
+      data: { userId: testUserId, propertyId, role: "MANAGER" },
+    });
+
+    agent = request.agent(app);
+    await agent.post("/api/v1/auth/login").send({ email: `test-${run}@example.com`, password: "password123" }).expect(200);
   });
 
   afterAll(async () => {
     if (propertyId) {
+      await prisma.propertyMembership.deleteMany({ where: { propertyId } });
       await prisma.policyAssignment.deleteMany({ where: { propertyId } });
       await prisma.amenityAssignment.deleteMany({ where: { propertyId } });
       await prisma.unit.deleteMany({ where: { propertyId } });
@@ -115,6 +132,10 @@ describe.skipIf(!process.env.DATABASE_URL)("inventory API", () => {
     if (parkingId) {
       await prisma.amenity.deleteMany({ where: { id: parkingId } });
     }
+    if (testUserId) {
+      await prisma.propertyMembership.deleteMany({ where: { userId: testUserId } });
+      await prisma.user.deleteMany({ where: { id: testUserId } });
+    }
     if (landlordId) {
       await prisma.landlord.deleteMany({ where: { id: landlordId } });
     }
@@ -122,9 +143,7 @@ describe.skipIf(!process.env.DATABASE_URL)("inventory API", () => {
   });
 
   it("lists the amenity catalogue", async () => {
-    const response = await request(app)
-      .get("/api/v1/inventory/amenities")
-      .expect(200);
+    const response = await agent.get("/api/v1/inventory/amenities").expect(200);
 
     const keys = (response.body.data as { key: string }[]).map((a) => a.key);
     expect(keys).toContain(`lift-${run}`);
@@ -132,16 +151,14 @@ describe.skipIf(!process.env.DATABASE_URL)("inventory API", () => {
   });
 
   it("lists the policy catalogue", async () => {
-    const response = await request(app)
-      .get("/api/v1/inventory/policies")
-      .expect(200);
+    const response = await agent.get("/api/v1/inventory/policies").expect(200);
 
     const keys = (response.body.data as { key: string }[]).map((p) => p.key);
     expect(keys).toContain(`pets-${run}`);
   });
 
   it("derives effective configuration for a unit", async () => {
-    const response = await request(app)
+    const response = await agent
       .get("/api/v1/inventory/effective")
       .query({ level: "UNIT", propertyId, buildingId, unitId })
       .expect(200);
@@ -168,7 +185,7 @@ describe.skipIf(!process.env.DATABASE_URL)("inventory API", () => {
   });
 
   it("rejects an effective query missing the unit id", async () => {
-    await request(app)
+    await agent
       .get("/api/v1/inventory/effective")
       .query({ level: "UNIT", propertyId })
       .expect(400);

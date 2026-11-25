@@ -2,7 +2,8 @@ import type { NextFunction, Request, Response } from "express";
 import { prisma } from "../database/prisma.js";
 import type { SessionUser } from "../modules/auth/services/auth.service.js";
 
-function resolvePropertyId(req: Request): string | undefined {
+async function resolvePropertyId(req: Request): Promise<string | undefined> {
+  // 1. Check explicit propertyId in params, body, or query
   const fromParams = req.params.propertyId;
   if (typeof fromParams === "string") {
     return fromParams;
@@ -14,15 +15,32 @@ function resolvePropertyId(req: Request): string | undefined {
   }
 
   const fromQuery = req.query.propertyId;
-  return typeof fromQuery === "string" ? fromQuery : undefined;
+  if (typeof fromQuery === "string") {
+    return fromQuery;
+  }
+
+  // 2. Check for leaseId and resolve property from lease
+  const leaseId = req.params.leaseId;
+  if (typeof leaseId === "string") {
+    const lease = await prisma.lease.findUnique({
+      where: { id: leaseId },
+      select: { propertyId: true, tenantId: true },
+    });
+    if (lease) {
+      return lease.propertyId;
+    }
+  }
+
+  return undefined;
 }
 
 /**
  * Resolve the target property and authorise the session user for it.
  *
- * PLATFORM_ADMIN may access any property. Other roles need an active
- * PropertyMembership with role LANDLORD or MANAGER. Missing/foreign resources
- * return 403 (no existence leak).
+ * PLATFORM_ADMIN may access any property.
+ * LANDLORD/MANAGER need an active PropertyMembership for the property.
+ * TENANT may access the property of their own lease (via TenantLink).
+ * Missing/foreign resources return 403 (no existence leak).
  */
 export async function requirePropertyScope(
   req: Request,
@@ -40,7 +58,8 @@ export async function requirePropertyScope(
     return;
   }
 
-  const propertyId = resolvePropertyId(req);
+  const propertyId = await resolvePropertyId(req);
+
   if (!propertyId) {
     res.status(403).json({ error: { code: "FORBIDDEN" } });
     return;
@@ -52,21 +71,47 @@ export async function requirePropertyScope(
     return;
   }
 
-  const membership = await prisma.propertyMembership.findFirst({
-    where: {
-      userId: user.id,
-      propertyId,
-      role: { in: ["LANDLORD", "MANAGER"] },
-    },
-    select: { role: true },
-  });
+  // Check property membership for LANDLORD/MANAGER
+  if (user.role === "LANDLORD" || user.role === "MANAGER") {
+    const membership = await prisma.propertyMembership.findFirst({
+      where: {
+        userId: user.id,
+        propertyId,
+        role: { in: ["LANDLORD", "MANAGER"] },
+      },
+      select: { role: true },
+    });
 
-  if (!membership) {
-    res.status(403).json({ error: { code: "FORBIDDEN" } });
+    if (!membership) {
+      res.status(403).json({ error: { code: "FORBIDDEN" } });
+      return;
+    }
+
+    res.locals.propertyId = propertyId;
+    res.locals.membershipRole = membership.role;
+    next();
     return;
   }
 
-  res.locals.propertyId = propertyId;
-  res.locals.membershipRole = membership.role;
-  next();
+  // Check tenant access for TENANT role
+  if (user.role === "TENANT" && user.tenantLink) {
+    const lease = await prisma.lease.findFirst({
+      where: {
+        propertyId,
+        tenantId: user.tenantLink.tenantId,
+      },
+      select: { id: true },
+    });
+
+    if (!lease) {
+      res.status(403).json({ error: { code: "FORBIDDEN" } });
+      return;
+    }
+
+    res.locals.propertyId = propertyId;
+    next();
+    return;
+  }
+
+  res.status(403).json({ error: { code: "FORBIDDEN" } });
 }
