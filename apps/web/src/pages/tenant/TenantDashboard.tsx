@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
-import { Banknote, CreditCard, Scale } from "lucide-react";
+import { Banknote, CreditCard, Scale, CreditCard as CreditCardIcon } from "lucide-react";
 import { Badge } from "../../components/ui/Badge";
 import { Card } from "../../components/ui/Card";
 import { StatCard } from "../../components/ui/StatCard";
 import { useTenantArrears } from "../../hooks/useTenantArrears";
+import { PayRentModal } from "../../components/tenant/PayRentModal";
+import { ToastProvider } from "../../hooks/useToast";
 
 const currency = new Intl.NumberFormat("en-KE", {
   style: "currency",
@@ -13,6 +15,7 @@ const currency = new Intl.NumberFormat("en-KE", {
 
 // Mock tenant context until authentication (ADR-004) supplies the real lease.
 const MOCK_LEASE_ID = "lease_123";
+const MOCK_TENANT_PHONE = "254712345678";
 
 function formatCurrency(value: string | undefined): string {
   if (value === undefined) {
@@ -21,11 +24,13 @@ function formatCurrency(value: string | undefined): string {
   return currency.format(Number(value));
 }
 
-export default function TenantDashboard() {
+function TenantDashboardContent() {
   const { data, isLoading, isError, error } =
     useTenantArrears(MOCK_LEASE_ID);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const isOverdue = data ? Number(data.currentBalance) > 0 : false;
+  const hasBalance = data ? Number(data.currentBalance) > 0 : false;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -68,6 +73,26 @@ export default function TenantDashboard() {
               />
             </section>
 
+            {hasBalance && (
+              <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-base font-semibold">Outstanding Balance</p>
+                    <p className="text-sm text-slate-500">
+                      {formatCurrency(data.currentBalance)} due. Pay now via M-Pesa.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 transition"
+                  >
+                    <CreditCardIcon className="h-4 w-4 inline mr-2" />
+                    Pay Rent via M-Pesa
+                  </button>
+                </div>
+              </section>
+            )}
+
             <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Link
                 to="/tenant/maintenance"
@@ -88,9 +113,27 @@ export default function TenantDashboard() {
                 </p>
               </Link>
             </section>
+
+            <PayRentModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              leaseId={MOCK_LEASE_ID}
+              currentBalance={data.currentBalance}
+              tenantPhone={MOCK_TENANT_PHONE}
+            />
           </>
         ) : null}
       </main>
     </div>
+  );
+}
+
+import { useState } from "react";
+
+export default function TenantDashboard() {
+  return (
+    <ToastProvider>
+      <TenantDashboardContent />
+    </ToastProvider>
   );
 }
