@@ -164,6 +164,17 @@ enum NoticeStatus {
 }
 
 // ---------------------------------------------------------------------------
+// Enums — Milestone 011 (authentication & authorization)
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  PLATFORM_ADMIN
+  LANDLORD
+  MANAGER
+  TENANT
+}
+
+// ---------------------------------------------------------------------------
 // Portfolio & Tenancy (Milestone 002A — core inventory)
 // ---------------------------------------------------------------------------
 
@@ -205,6 +216,7 @@ model Property {
   payments           Payment[]
   maintenanceTickets MaintenanceTicket[]
   tenantNotices      TenantNotice[]
+  memberships        PropertyMembership[]
 
   @@index([landlordId])
   @@index([county, town, neighbourhood])
@@ -380,6 +392,7 @@ model Tenant {
 
   leases Lease[]
   tenantNotices TenantNotice[]
+  tenantLinks TenantLink[]
 
   @@index([phone])
   @@map("tenants")
@@ -532,4 +545,59 @@ model TenantNotice {
   @@index([tenantId])
   @@index([status])
   @@map("tenant_notices")
+}
+
+// ---------------------------------------------------------------------------
+// Authentication & authorization (Milestone 011)
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.Text
+  passwordSalt String   @map("password_salt") @db.VarChar(64)
+  role         UserRole
+  active       Boolean  @default(true)
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  propertyMemberships PropertyMembership[]
+  tenantLink          TenantLink?
+
+  @@map("users")
+}
+
+model PropertyMembership {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  propertyId String   @map("property_id") @db.Uuid
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  role       UserRole
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([userId, propertyId])
+  @@index([propertyId])
+  @@map("property_memberships")
+}
+
+model TenantLink {
+  id       String @id @default(uuid()) @db.Uuid
+  userId   String @unique @map("user_id") @db.Uuid
+  user     User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  tenantId String @unique @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("tenant_links")
+}
+
+model Session {
+  sid     String   @id @db.VarChar(128)
+  sess    Json
+  expires DateTime
+
+  @@index([expires])
+  @@map("sessions")
 }
