@@ -6,6 +6,7 @@ import type {
   TicketStatus,
 } from "@prisma/client";
 import { prisma } from "../../../database/prisma.js";
+import { eventEmitter } from "../../../modules/notification/services/event-emitter.service.js";
 
 /** Thrown when a ticket/unit is not found within the caller's property. */
 export class NotFoundException extends Error {
@@ -51,19 +52,33 @@ export async function createTicket(
     );
   }
 
-  return prisma.maintenanceTicket.create({
-    data: {
+const ticket = await prisma.maintenanceTicket.create({
+      data: {
+        propertyId: data.propertyId,
+        unitId: data.unitId,
+        initiatedBy: data.initiatedBy,
+        initiatorId: data.initiatorId,
+        title: data.title,
+        description: data.description,
+        priority: data.priority ?? "MEDIUM",
+        estimatedCost: data.estimatedCost ?? null,
+        status: "OPEN",
+      },
+    });
+
+    // Emit MaintenanceCreatedEvent for notification handlers
+    eventEmitter.emitEvent({
+      type: "MaintenanceCreatedEvent",
+      ticketId: ticket.id,
       propertyId: data.propertyId,
       unitId: data.unitId,
+      title: data.title,
+      priority: data.priority ?? "MEDIUM",
       initiatedBy: data.initiatedBy,
       initiatorId: data.initiatorId,
-      title: data.title,
-      description: data.description,
-      priority: data.priority ?? "MEDIUM",
-      estimatedCost: data.estimatedCost ?? null,
-      status: "OPEN",
-    },
-  });
+    });
+
+    return ticket;
 }
 
 function isTerminal(status: TicketStatus): boolean {
@@ -111,10 +126,22 @@ export async function updateTicketStatus(
   // TODO(ledger): when newStatus === "RESOLVED" and ticket.actualCost > 0,
   // create/link an ADJUSTMENT LedgerEntry for landlord transparency.
 
-  return prisma.maintenanceTicket.update({
-    where: { id: ticketId },
-    data,
-  });
+const updatedTicket = await prisma.maintenanceTicket.update({
+      where: { id: ticketId },
+      data,
+    });
+
+    // Emit MaintenanceUpdatedEvent for notification handlers
+    eventEmitter.emitEvent({
+      type: "MaintenanceUpdatedEvent",
+      ticketId,
+      propertyId,
+      oldStatus: ticket.status,
+      newStatus: updatedTicket.status,
+      resolutionNotes: updatedTicket.resolutionNotes ?? undefined,
+    });
+
+    return updatedTicket;
 }
 
 /** Update the actual cost; must be non-negative. */
@@ -147,10 +174,11 @@ export async function updateTicketCost(
 export async function listTickets(
   propertyId: string,
   status?: TicketStatus,
-): Promise<MaintenanceTicket[]> {
+): Promise<Array<MaintenanceTicket & { unit: { unitNumber: string } }>> {
   return prisma.maintenanceTicket.findMany({
     where: { propertyId, ...(status ? { status } : {}) },
     orderBy: { createdAt: "desc" },
+    include: { unit: { select: { unitNumber: true } } },
   });
 }
 

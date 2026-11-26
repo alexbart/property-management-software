@@ -7,6 +7,8 @@ import type { NextFunction, Request, Response } from "express";
  * caller's identity is supplied via the `x-user-id` header so user-scoped
  * isolation and rate limiting can be exercised and tested. This MUST be
  * replaced by proper auth middleware before production exposure.
+ * isolation can be exercised and tested. This MUST be replaced by proper auth
+ * middleware before production exposure.
  */
 export function requireAuth(
   req: Request,

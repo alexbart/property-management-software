@@ -61,6 +61,12 @@ export async function apiClient<T>(
   const response = await fetch(`${baseUrl}${endpoint}`, {
     ...init,
     headers: authHeaders(headers),
+    headers: {
+      "Content-Type": "application/json",
+      "x-property-id": resolvePropertyId(),
+      "x-user-id": resolveUserId(),
+      ...headers,
+    },
   });
 
   if (!response.ok) {
