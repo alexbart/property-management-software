@@ -15,18 +15,14 @@ export interface ReceiptExport {
   mimeType: string;
 }
 
-interface PdfKitDocumentLike {
-  on(event: "data", listener: (chunk: Buffer) => void): void;
-  on(event: "end", listener: () => void): void;
-  on(event: "error", listener: (error: unknown) => void): void;
-  end(): void;
+interface PdfDocumentLike {
+  getBuffer(): Promise<Buffer>;
 }
 
 interface PdfPrinterLike {
-  createPdfKitDocument(documentDefinitions: unknown): PdfKitDocumentLike;
+  setFonts(fonts: Record<string, unknown>): void;
+  createPdf(documentDefinitions: unknown): PdfDocumentLike;
 }
-
-type PdfPrinterCtor = new (fonts: Record<string, unknown>) => PdfPrinterLike;
 
 const PLATFORM_NAME = "Property Management Platform";
 
@@ -48,24 +44,18 @@ function resolveRobotoFonts(): Record<string, unknown> {
 }
 
 async function renderPdf(documentDefinitions: unknown): Promise<Buffer> {
+  // The Node build of pdfmake exports a ready-to-use singleton instance
+  // (not a class). `setFonts` must be called before `createPdf`.
   const mod = (await import("pdfmake")) as unknown as {
-    default?: PdfPrinterCtor;
+    default?: PdfPrinterLike;
   } & Record<string, unknown>;
 
-  const Ctor = (mod.default ??
-    (mod as unknown as PdfPrinterCtor)) as PdfPrinterCtor;
-  const printer = new Ctor(resolveRobotoFonts());
-  const doc = printer.createPdfKitDocument(documentDefinitions);
+  const printer = (mod.default ??
+    (mod as unknown as PdfPrinterLike)) as PdfPrinterLike;
 
-  const chunks: Buffer[] = [];
-  const buffer = await new Promise<Buffer>((resolve, reject) => {
-    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", (error: unknown) => reject(error));
-    doc.end();
-  });
-
-  return buffer;
+  printer.setFonts(resolveRobotoFonts());
+  const doc = printer.createPdf(documentDefinitions);
+  return doc.getBuffer();
 }
 
 function formatKes(amount: Prisma.Decimal): string {

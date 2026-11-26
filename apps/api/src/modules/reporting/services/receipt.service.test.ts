@@ -9,23 +9,11 @@ vi.mock("../../../database/prisma.js", () => ({
 
 vi.mock("pdfmake", () => {
   return {
-    default: class {
-      createPdfKitDocument() {
-        const listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
-        return {
-          on(event: string, cb: (...args: unknown[]) => void) {
-            (listeners[event] ??= []).push(cb);
-          },
-          end() {
-            for (const cb of listeners["data"] ?? []) {
-              cb(Buffer.from("%PDF-1.4 fake receipt"));
-            }
-            for (const cb of listeners["end"] ?? []) {
-              cb();
-            }
-          },
-        };
-      }
+    default: {
+      setFonts: vi.fn(),
+      createPdf: vi.fn(() => ({
+        getBuffer: async () => Buffer.from("%PDF-1.4 fake receipt"),
+      })),
     },
   };
 });

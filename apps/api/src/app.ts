@@ -8,6 +8,7 @@ import { leaseRouter } from "./modules/lease/lease-routes.js";
 import { financeRouter } from "./modules/finance/finance-routes.js";
 import { maintenanceRouter } from "./modules/maintenance/maintenance-routes.js";
 import { tenantRouter } from "./modules/tenant/tenant-routes.js";
+import { reportingRouter } from "./modules/reporting/reporting-routes.js";
 
 export const app: ReturnType<typeof express> = express();
 
@@ -38,6 +39,9 @@ app.use("/api/v1/tenants", tenantRouter);
 
 // Maintenance work orders.
 app.use("/api/v1/maintenance", maintenanceRouter);
+
+// Reporting & export engine (rate-limited, property-scoped).
+app.use("/api/v1/reporting", reportingRouter);
 
 // Basic service health check.
 app.get("/api/v1/health", (_req, res) => {
