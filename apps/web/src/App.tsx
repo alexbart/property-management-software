@@ -5,6 +5,8 @@ import MaintenanceList from "./pages/tenant/MaintenanceList";
 import SubmitNoticeForm from "./pages/tenant/SubmitNoticeForm";
 import TenantDashboard from "./pages/tenant/TenantDashboard";
 import MaintenanceReports from "./pages/MaintenanceReports";
+import NotificationPreferences from "./pages/NotificationPreferences";
+import { NotificationBell } from "./components/NotificationBell";
 
 function App() {
   return (
@@ -14,7 +16,7 @@ function App() {
             <span className="text-lg font-semibold">
               Property Management Platform
             </span>
-            <nav className="flex gap-4 text-sm">
+            <nav className="flex items-center gap-4 text-sm">
               <Link className="text-slate-600 hover:text-slate-900" to="/">
                 Home
               </Link>
@@ -24,6 +26,13 @@ function App() {
               >
                 Dashboard
               </Link>
+              <Link
+                className="text-slate-600 hover:text-slate-900"
+                to="/settings/notifications"
+              >
+                Settings
+              </Link>
+              <NotificationBell />
             </nav>
           </div>
         </header>
@@ -50,6 +59,10 @@ function App() {
           />
           <Route path="/tenant/notice" element={<SubmitNoticeForm />} />
           <Route path="/maintenance/reports" element={<MaintenanceReports />} />
+          <Route
+            path="/settings/notifications"
+            element={<NotificationPreferences />}
+          />
         </Routes>
     </div>
   );

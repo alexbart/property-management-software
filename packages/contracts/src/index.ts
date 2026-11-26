@@ -9,3 +9,4 @@ export * from "./finance/index.js";
 export * from "./tenant/index.js";
 export * from "./maintenance/index.js";
 export * from "./reporting/index.js";
+export * from "./notification/index.js";
