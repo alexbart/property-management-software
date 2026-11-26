@@ -13,7 +13,6 @@ vi.mock("../../../database/prisma.js", () => ({
 
 import { prisma } from "../../../database/prisma.js";
 import {
-  getLeaseBalance,
   NotFoundException,
   recordPayment,
 } from "./finance.service.js";
@@ -75,11 +74,8 @@ describe("finance service", () => {
         data: expect.objectContaining({ status: "COMPLETED", reference: "ref-1" }),
       }),
     );
-    expect(tx.ledgerEntry.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ type: "RENT" }),
-      }),
-    );
+    // Payments are cash records only; they must not write a RENT ledger row.
+    expect(tx.ledgerEntry.create).not.toHaveBeenCalled();
     expect(tx.idempotencyKey.upsert).toHaveBeenCalled();
   });
 
@@ -114,7 +110,7 @@ describe("finance service", () => {
 
     expect(second.id).toBe(first.id);
     expect(tx.payment.create).toHaveBeenCalledTimes(1);
-    expect(tx.ledgerEntry.create).toHaveBeenCalledTimes(1);
+    expect(tx.ledgerEntry.create).not.toHaveBeenCalled();
   });
 
   it("rejects a lease that belongs to a different property", async () => {
@@ -132,18 +128,4 @@ describe("finance service", () => {
     expect(tx.payment.create).not.toHaveBeenCalled();
   });
 
-  it("computes arrears as RENT+PENALTY minus COMPLETED payments", async () => {
-    vi.mocked(prisma.ledgerEntry.aggregate).mockResolvedValue({
-      _sum: { amount: new Prisma.Decimal("15000.00") },
-    } as never);
-    vi.mocked(prisma.payment.aggregate).mockResolvedValue({
-      _sum: { amount: new Prisma.Decimal("5000.00") },
-    } as never);
-
-    const result = await getLeaseBalance("lease-1", "property-1");
-
-    expect(result.totalDue.equals(new Prisma.Decimal("15000.00"))).toBe(true);
-    expect(result.totalPaid.equals(new Prisma.Decimal("5000.00"))).toBe(true);
-    expect(result.balance.equals(new Prisma.Decimal("10000.00"))).toBe(true);
-  });
 });

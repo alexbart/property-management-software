@@ -1,6 +1,6 @@
-import type { LedgerType, Payment, PaymentMethod, Prisma } from "@prisma/client";
-import { Prisma as PrismaNamespace } from "@prisma/client";
+import type { Payment, PaymentMethod, Prisma } from "@prisma/client";
 import { prisma } from "../../../database/prisma.js";
+import { eventEmitter } from "../../../modules/notification/services/event-emitter.service.js";
 
 /** Thrown when a lease is not found within the caller's property scope. */
 export class NotFoundException extends Error {
@@ -18,12 +18,6 @@ export class ConflictException extends Error {
   }
 }
 
-export interface LeaseBalance {
-  totalDue: Prisma.Decimal;
-  totalPaid: Prisma.Decimal;
-  balance: Prisma.Decimal;
-}
-
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 
 function isUniqueConstraintError(error: unknown): boolean {
@@ -35,7 +29,10 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 /**
- * Record a completed payment and its offsetting RENT ledger entry atomically.
+ * Record a completed payment.
+ *
+ * The Payment row is the cash record. No ledger entry is written: writing a
+ * RENT row here would double-count the payment in arrears (Milestone 010).
  *
  * Idempotency: the M-Pesa `reference` (CheckoutRequestID/MerchantRequestID) is
  * unique. A repeated callback returns the existing payment instead of
@@ -87,18 +84,6 @@ export async function recordPayment(
         },
       });
 
-      const ledgerType: LedgerType = "RENT";
-      await tx.ledgerEntry.create({
-        data: {
-          leaseId,
-          propertyId,
-          type: ledgerType,
-          amount,
-          description: `Payment ${reference}`,
-          effectiveDate: payment.receivedAt,
-        },
-      });
-
       const expiresAt = new Date(Date.now() + IDEMPOTENCY_TTL_MS);
       const responsePayload = {
         id: payment.id,
@@ -116,6 +101,17 @@ export async function recordPayment(
         where: { key: reference },
         update: { responsePayload, expiresAt },
         create: { key: reference, responsePayload, expiresAt },
+      });
+
+      // Emit PaymentReceivedEvent for notification handlers
+      eventEmitter.emitEvent({
+        type: "PaymentReceivedEvent",
+        leaseId,
+        propertyId,
+        amount: payment.amount.toString(),
+        method: payment.method,
+        reference: payment.reference,
+        receivedAt: payment.receivedAt,
       });
 
       return payment;
@@ -136,37 +132,4 @@ export async function recordPayment(
     }
     throw error;
   }
-}
-
-/**
- * Arrears for a lease: SUM(RENT + PENALTY) - SUM(COMPLETED payments).
- * Derived, never stored.
- */
-export async function getLeaseBalance(
-  leaseId: string,
-  propertyId: string,
-): Promise<LeaseBalance> {
-  const [charges, payments] = await Promise.all([
-    prisma.ledgerEntry.aggregate({
-      where: {
-        leaseId,
-        propertyId,
-        type: { in: ["RENT", "PENALTY"] },
-      },
-      _sum: { amount: true },
-    }),
-    prisma.payment.aggregate({
-      where: { leaseId, propertyId, status: "COMPLETED" },
-      _sum: { amount: true },
-    }),
-  ]);
-
-  const totalDue = charges._sum.amount ?? new PrismaNamespace.Decimal(0);
-  const totalPaid = payments._sum.amount ?? new PrismaNamespace.Decimal(0);
-
-  return {
-    totalDue,
-    totalPaid,
-    balance: totalDue.minus(totalPaid),
-  };
 }

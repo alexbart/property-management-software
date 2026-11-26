@@ -1,4 +1,4 @@
-# ADR-004: Monorepo Tooling and Quality Baseline
+# ADR-007: Monorepo Tooling and Quality Baseline
 
 Status: Accepted
 
