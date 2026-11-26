@@ -4,6 +4,7 @@ import CreateTicketForm from "./pages/tenant/CreateTicketForm";
 import MaintenanceList from "./pages/tenant/MaintenanceList";
 import SubmitNoticeForm from "./pages/tenant/SubmitNoticeForm";
 import TenantDashboard from "./pages/tenant/TenantDashboard";
+import MaintenanceReports from "./pages/MaintenanceReports";
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
             element={<CreateTicketForm />}
           />
           <Route path="/tenant/notice" element={<SubmitNoticeForm />} />
+          <Route path="/maintenance/reports" element={<MaintenanceReports />} />
         </Routes>
     </div>
   );
