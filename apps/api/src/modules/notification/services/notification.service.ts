@@ -121,8 +121,8 @@ export async function getOrCreatePreferences(
 
 export async function updatePreference(
   input: NotificationPreferenceInput,
-): Promise<void> {
-  await prisma.notificationPreference.upsert({
+) {
+  return prisma.notificationPreference.upsert({
     where: {
       userId_type_channel: {
         userId: input.userId,
@@ -132,6 +132,13 @@ export async function updatePreference(
     },
     update: { enabled: input.enabled },
     create: input,
+  });
+}
+
+export async function getPreferences(userId: string) {
+  return prisma.notificationPreference.findMany({
+    where: { userId },
+    orderBy: { type: "asc" },
   });
 }
 
@@ -152,19 +159,52 @@ export async function getUserNotifications(
   });
 }
 
+export async function listNotifications(
+  userId: string,
+  options?: { status?: "UNREAD" | "READ"; limit?: number; offset?: number },
+) {
+  const { status, limit = 50, offset = 0 } = options || {};
+
+  const where: Prisma.NotificationWhereInput = {
+    userId,
+    ...(status === "UNREAD" ? { isRead: false } : {}),
+    ...(status === "READ" ? { isRead: true } : {}),
+  };
+
+  const [notifications, total, unreadCount] = await Promise.all([
+    prisma.notification.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+    }),
+    prisma.notification.count({ where }),
+    prisma.notification.count({ where: { userId, isRead: false } }),
+  ]);
+
+  return { notifications, total, unreadCount };
+}
+
 export async function markAsRead(
   notificationId: string,
   userId: string,
-): Promise<void> {
-  await prisma.notification.update({
+): Promise<boolean> {
+  const result = await prisma.notification.updateMany({
     where: { id: notificationId, userId },
     data: { isRead: true, readAt: new Date() },
   });
+  return result.count > 0;
 }
 
 export async function markAllAsRead(userId: string): Promise<void> {
   await prisma.notification.updateMany({
     where: { userId, isRead: false },
     data: { isRead: true, readAt: new Date() },
+  });
+}
+
+export async function getUnreadCount(userId: string): Promise<number> {
+  return prisma.notification.count({
+    where: { userId, isRead: false },
   });
 }
