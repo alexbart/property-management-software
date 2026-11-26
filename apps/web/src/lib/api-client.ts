@@ -1,5 +1,6 @@
 const DEFAULT_API_URL = "http://localhost:4000";
 const DEFAULT_PROPERTY_ID = "prop_123";
+const DEFAULT_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -25,6 +26,13 @@ function resolvePropertyId(): string {
   return window.localStorage.getItem("mock-property-id") ?? DEFAULT_PROPERTY_ID;
 }
 
+function resolveUserId(): string {
+  if (typeof window === "undefined") {
+    return DEFAULT_USER_ID;
+  }
+  return window.localStorage.getItem("mock-user-id") ?? DEFAULT_USER_ID;
+}
+
 /**
  * Typed fetch wrapper for the backend.
  *
@@ -46,6 +54,7 @@ export async function apiClient<T>(
     headers: {
       "Content-Type": "application/json",
       "x-property-id": resolvePropertyId(),
+      "x-user-id": resolveUserId(),
       ...headers,
     },
   });
