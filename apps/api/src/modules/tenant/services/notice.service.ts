@@ -1,6 +1,7 @@
 import type { NoticeStatus } from "@prisma/client";
 import { prisma } from "../../../database/prisma.js";
 import { NotFoundException } from "../../finance/services/finance.service.js";
+import { eventEmitter } from "../../../modules/notification/services/event-emitter.service.js";
 
 /** Thrown when a notice violates a business rule (e.g. the 30-day minimum). */
 export class BadRequestException extends Error {
@@ -59,16 +60,28 @@ export async function createNotice(data: CreateNoticeInput) {
     );
   }
 
-  return prisma.tenantNotice.create({
-    data: {
+const notice = await prisma.tenantNotice.create({
+      data: {
+        leaseId: data.leaseId,
+        propertyId: data.propertyId,
+        tenantId: data.tenantId,
+        noticeDate: data.noticeDate,
+        intendedMoveOutDate: data.intendedMoveOutDate,
+        reason: data.reason,
+      },
+    });
+
+    // Emit NoticeReceivedEvent for notification handlers
+    eventEmitter.emitEvent({
+      type: "NoticeReceivedEvent",
+      noticeId: notice.id,
       leaseId: data.leaseId,
       propertyId: data.propertyId,
       tenantId: data.tenantId,
-      noticeDate: data.noticeDate,
       intendedMoveOutDate: data.intendedMoveOutDate,
-      reason: data.reason,
-    },
-  });
+    });
+
+    return notice;
 }
 
 /**

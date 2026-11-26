@@ -1,5 +1,6 @@
 import type { Payment, PaymentMethod, Prisma } from "@prisma/client";
 import { prisma } from "../../../database/prisma.js";
+import { eventEmitter } from "../../../modules/notification/services/event-emitter.service.js";
 
 /** Thrown when a lease is not found within the caller's property scope. */
 export class NotFoundException extends Error {
@@ -100,6 +101,17 @@ export async function recordPayment(
         where: { key: reference },
         update: { responsePayload, expiresAt },
         create: { key: reference, responsePayload, expiresAt },
+      });
+
+      // Emit PaymentReceivedEvent for notification handlers
+      eventEmitter.emitEvent({
+        type: "PaymentReceivedEvent",
+        leaseId,
+        propertyId,
+        amount: payment.amount.toString(),
+        method: payment.method,
+        reference: payment.reference,
+        receivedAt: payment.receivedAt,
       });
 
       return payment;
