@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import { Footer } from "./Footer";
 
 const ROUTE_LABELS: Record<string, string> = {
   "/": "Home",
@@ -15,7 +16,7 @@ const ROUTE_LABELS: Record<string, string> = {
 };
 
 function crumbsForPath(pathname: string): Array<{ label: string; to?: string }> {
-  const label = ROUTE_LABELS[pathname] ?? "Property Insider";
+  const label = ROUTE_LABELS[pathname] ?? "Property Insiders";
   if (pathname === "/") return [{ label }];
   return [{ label: "Home", to: "/" }, { label }];
 }
@@ -30,18 +31,22 @@ export function AppShell({ children, actions }: AppShellProps) {
   const { pathname } = useLocation();
 
   return (
-    <div className="flex min-h-screen bg-background text-text">
-      <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar
-          breadcrumbs={crumbsForPath(pathname)}
-          onOpenMobile={() => setMobileOpen(true)}
-          actions={actions}
+    <div className="flex min-h-screen flex-col bg-background text-text">
+      <Topbar
+        breadcrumbs={crumbsForPath(pathname)}
+        onOpenMobile={() => setMobileOpen(true)}
+        actions={actions}
+      />
+      <div className="flex flex-1 lg:mt-4">
+        <Sidebar
+          mobileOpen={mobileOpen}
+          onCloseMobile={() => setMobileOpen(false)}
         />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {children}
         </main>
       </div>
+      <Footer />
     </div>
   );
 }

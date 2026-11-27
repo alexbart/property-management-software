@@ -5,6 +5,7 @@ import AmenitiesPage from "./pages/inventory/AmenitiesPage";
 import PoliciesPage from "./pages/inventory/PoliciesPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ProfilePage from "./pages/ProfilePage";
 import CreateTicketForm from "./pages/tenant/CreateTicketForm";
 import MaintenanceList from "./pages/tenant/MaintenanceList";
 import SubmitNoticeForm from "./pages/tenant/SubmitNoticeForm";
@@ -41,6 +42,7 @@ function AppRoutes() {
                   }
                 />
                 <Route path="/dashboard" element={<ReconciliationDashboard />} />
+                <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/inventory/amenities" element={<AmenitiesPage />} />
                 <Route path="/inventory/policies" element={<PoliciesPage />} />
                 <Route path="/tenant/dashboard" element={<TenantDashboard />} />

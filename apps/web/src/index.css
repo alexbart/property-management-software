@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode (toggled on <html class="dark">). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Brand / semantic palette (change centrally here). */
   --color-primary: #1e3a5f;
@@ -28,6 +31,22 @@
 
   color: var(--color-text);
   background: var(--color-background);
+}
+
+/* Dark theme overrides (applied when <html class="dark">). */
+.dark {
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #475569;
+  --color-background: #0f172a;
+  --color-surface: #1e293b;
+  --color-text: #e2e8f0;
+  --color-muted: #94a3b8;
+  --color-border: #334155;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
 }
 
 * {

@@ -68,13 +68,14 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-surface transition-transform lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-surface transition-transform",
+          "lg:sticky lg:inset-y-auto lg:top-20 lg:h-fit lg:max-h-[calc(100vh-6rem)] lg:self-start lg:translate-x-0 lg:rounded-md",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex h-16 items-center justify-between px-4">
           <span className="text-base font-semibold text-text">
-            Property Insider
+            Property Insiders
           </span>
           <button
             type="button"
@@ -131,15 +132,6 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             </div>
           ))}
         </nav>
-
-        <div className="border-t border-border p-3">
-          <div className="flex items-center gap-2 rounded-md px-2 py-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-text">
-              PI
-            </span>
-            <span className="text-sm text-text">Demo User</span>
-          </div>
-        </div>
       </aside>
     </>
   );
