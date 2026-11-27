@@ -105,6 +105,7 @@ function App() {
             element={<CreateTicketForm />}
           />
           <Route path="/tenant/notice" element={<SubmitNoticeForm />} />
+          <Route path="/maintenance/reports" element={<MaintenanceReports />} />
           <Route
             path="/settings/notifications"
             element={<NotificationPreferences />}
