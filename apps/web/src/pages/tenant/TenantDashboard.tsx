@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { Banknote, CreditCard, Scale } from "lucide-react";
+import { Banknote, CreditCard, Download, Scale } from "lucide-react";
 import { Badge } from "../../components/ui/Badge";
 import { Card } from "../../components/ui/Card";
 import { StatCard } from "../../components/ui/StatCard";
 import { useTenantArrears } from "../../hooks/useTenantArrears";
+import { useDownloadReceipt } from "../../hooks/useDownloadReceipt";
 
 const currency = new Intl.NumberFormat("en-KE", {
   style: "currency",
@@ -13,6 +14,8 @@ const currency = new Intl.NumberFormat("en-KE", {
 
 // Mock tenant context until authentication (ADR-004) supplies the real lease.
 const MOCK_LEASE_ID = "lease_123";
+// Mock completed payment until a payment history view exists (ADR-004).
+const MOCK_PAYMENT_ID = "payment_123";
 
 function formatCurrency(value: string | undefined): string {
   if (value === undefined) {
@@ -24,6 +27,7 @@ function formatCurrency(value: string | undefined): string {
 export default function TenantDashboard() {
   const { data, isLoading, isError, error } =
     useTenantArrears(MOCK_LEASE_ID);
+  const { download: downloadReceipt, isDownloading } = useDownloadReceipt();
 
   const isOverdue = data ? Number(data.currentBalance) > 0 : false;
 
@@ -87,6 +91,26 @@ export default function TenantDashboard() {
                   Submit a one-month move-out notice.
                 </p>
               </Link>
+            </section>
+
+            <section>
+              <Card className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-base font-semibold">Payment Receipt</p>
+                  <p className="text-sm text-slate-500">
+                    Download a PDF receipt for your latest completed payment.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void downloadReceipt(MOCK_PAYMENT_ID)}
+                  disabled={isDownloading}
+                  className="inline-flex items-center gap-1 self-start rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 sm:self-auto"
+                >
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                  {isDownloading ? "Downloading…" : "Download Receipt"}
+                </button>
+              </Card>
             </section>
           </>
         ) : null}

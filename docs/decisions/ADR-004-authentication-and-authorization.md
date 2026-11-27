@@ -1,6 +1,13 @@
 # ADR-004: Authentication and Authorization
 
-Status: Proposed
+Status: Accepted
+
+> Implementation note: the session-based auth model is implemented in
+> `feature/011-auth-authz` and ported onto the current line (branch
+> `feature/inventory-ui`). See ADR-008 for the concrete session model
+> (express-session + Postgres store, scrypt hashing, `UserRole` RBAC with
+> property/tenant scoping). The dev-only `AUTH_DEV_BYPASS` header bypass is
+> never active in production.
 
 ## Context
 
