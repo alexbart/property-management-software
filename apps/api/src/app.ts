@@ -1,6 +1,6 @@
 import express, { type RequestHandler } from "express";
 import cors from "cors";
-import { createRequire } from "node:module";
+import helmet from "helmet";
 import { env } from "./config/env.js";
 import { sessionMiddleware } from "./config/session.js";
 import { originCheck } from "./middleware/origin-check.js";
@@ -16,14 +16,14 @@ import { notificationRouter } from "./modules/notification/notification-routes.j
 import { authRouter } from "./modules/auth/auth-routes.js";
 import { searchRouter } from "./modules/search/search-routes.js";
 
-const helmet = createRequire(import.meta.url)("helmet") as (
+const helmetMiddleware = helmet as unknown as (
   options?: Record<string, unknown>,
 ) => RequestHandler;
 
 export const app: ReturnType<typeof express> = express();
 
 // Apply baseline HTTP security headers.
-app.use(helmet());
+app.use(helmetMiddleware());
 
 // Restrict browser access to the configured frontend.
 app.use(
