@@ -70,10 +70,6 @@ export async function apiClient<T>(
   const response = await fetch(`${baseUrl}${endpoint}`, {
     ...init,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
     headers: authHeaders(headers),
   });
 
