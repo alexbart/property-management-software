@@ -7,10 +7,12 @@ import {
 import {
   evaluateRiskHandler,
   getRiskProfileHandler,
+  listTenantsHandler,
 } from "./controllers/tenant.controller.js";
 
 export const tenantRouter: Router = Router();
 
+tenantRouter.get("/", propertyScope, listTenantsHandler);
 tenantRouter.post("/notices", propertyScope, createNoticeHandler);
 tenantRouter.patch(
   "/notices/:id/status",
