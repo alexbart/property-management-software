@@ -5,6 +5,24 @@ export const TenantIdParamsDto = z.object({
 });
 export type TenantIdParamsDto = z.infer<typeof TenantIdParamsDto>;
 
+export const TenantListQueryDto = z.object({
+  propertyId: z.string().uuid().optional(),
+});
+export type TenantListQueryDto = z.infer<typeof TenantListQueryDto>;
+
+export const TenantRiskSummaryDto = z.object({
+  id: z.string().uuid(),
+  firstName: z.string(),
+  lastName: z.string(),
+  phone: z.string(),
+  riskScore: z.number().int(),
+  riskFlags: z.array(z.string()),
+});
+export type TenantRiskSummaryDto = z.infer<typeof TenantRiskSummaryDto>;
+
+export const TenantListDto = z.array(TenantRiskSummaryDto);
+export type TenantListDto = z.infer<typeof TenantListDto>;
+
 export const TenantRiskProfileDto = z.object({
   riskScore: z.number().int().nonnegative(),
   riskFlags: z.array(z.string()),

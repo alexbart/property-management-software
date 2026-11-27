@@ -174,10 +174,11 @@ export async function updateTicketCost(
 export async function listTickets(
   propertyId: string,
   status?: TicketStatus,
-): Promise<MaintenanceTicket[]> {
+): Promise<Array<MaintenanceTicket & { unit: { unitNumber: string } }>> {
   return prisma.maintenanceTicket.findMany({
     where: { propertyId, ...(status ? { status } : {}) },
     orderBy: { createdAt: "desc" },
+    include: { unit: { select: { unitNumber: true } } },
   });
 }
 
