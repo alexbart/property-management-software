@@ -44,6 +44,14 @@ function AppRoutes() {
                   }
                 />
                 <Route path="/dashboard" element={<ReconciliationDashboard />} />
+                <Route
+                  path="/landlord/risk-register"
+                  element={<TenantRiskRegister />}
+                />
+                <Route
+                  path="/landlord/maintenance-verification"
+                  element={<MaintenanceVerification />}
+                />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/inventory/amenities" element={<AmenitiesPage />} />
                 <Route path="/inventory/policies" element={<PoliciesPage />} />
@@ -76,41 +84,6 @@ function App() {
     <AuthProvider>
       <AppRoutes />
     </AuthProvider>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <main className="mx-auto max-w-6xl px-4 py-10">
-                <h1 className="text-2xl font-bold sm:text-3xl">Welcome</h1>
-                <p className="mt-3 max-w-2xl text-slate-600">
-                  Foundation for property management, landlord transparency, rent
-                  collection, and maintenance operations.
-                </p>
-              </main>
-            }
-          />
-          <Route path="/dashboard" element={<ReconciliationDashboard />} />
-          <Route
-            path="/landlord/risk-register"
-            element={<TenantRiskRegister />}
-          />
-          <Route
-            path="/landlord/maintenance-verification"
-            element={<MaintenanceVerification />}
-          />
-          <Route path="/tenant/dashboard" element={<TenantDashboard />} />
-          <Route path="/tenant/maintenance" element={<MaintenanceList />} />
-          <Route
-            path="/tenant/maintenance/new"
-            element={<CreateTicketForm />}
-          />
-          <Route path="/tenant/notice" element={<SubmitNoticeForm />} />
-          <Route
-            path="/settings/notifications"
-            element={<NotificationPreferences />}
-          />
-        </Routes>
-    </div>
   );
 }
 
