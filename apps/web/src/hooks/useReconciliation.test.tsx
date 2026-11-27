@@ -54,8 +54,6 @@ describe("useReconciliation", () => {
       "/api/v1/finance/properties/prop_123/reconciliation",
     );
     expect(String(url)).toContain("startDate=2026-01-01");
-    expect(
-      (init?.headers as Record<string, string>)["x-property-id"],
-    ).toBe("prop_123");
+    expect(init?.credentials).toBe("include");
   });
 });

@@ -1,19 +1,29 @@
-import express from "express";
+import express, { type RequestHandler } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { env } from "./config/env.js";
+import { sessionMiddleware } from "./config/session.js";
+import { originCheck } from "./middleware/origin-check.js";
+import { devBypass } from "./middleware/dev-bypass.js";
 import { prisma } from "./database/prisma.js";
 import { inventoryRouter } from "./modules/inventory/inventory-routes.js";
 import { leaseRouter } from "./modules/lease/lease-routes.js";
 import { financeRouter } from "./modules/finance/finance-routes.js";
 import { maintenanceRouter } from "./modules/maintenance/maintenance-routes.js";
 import { tenantRouter } from "./modules/tenant/tenant-routes.js";
+import { reportingRouter } from "./modules/reporting/reporting-routes.js";
 import { notificationRouter } from "./modules/notification/notification-routes.js";
+import { authRouter } from "./modules/auth/auth-routes.js";
+import { searchRouter } from "./modules/search/search-routes.js";
+
+const helmetMiddleware = helmet as unknown as (
+  options?: Record<string, unknown>,
+) => RequestHandler;
 
 export const app: ReturnType<typeof express> = express();
 
 // Apply baseline HTTP security headers.
-app.use(helmet());
+app.use(helmetMiddleware());
 
 // Restrict browser access to the configured frontend.
 app.use(
@@ -24,6 +34,21 @@ app.use(
 );
 
 app.use(express.json({ limit: "1mb" }));
+
+// Cookie session (Postgres store). Must run before any route.
+app.use(sessionMiddleware);
+
+// Development-only auth bypass (before routes).
+app.use(devBypass);
+
+// CSRF defence for mutating routes (no Origin/Referer => server-to-server).
+app.use(originCheck);
+
+// Authentication (login, register, logout, me).
+app.use("/api/v1/auth", authRouter);
+
+// Global search (scope-filtered by the session user).
+app.use("/api/v1/search", searchRouter);
 
 // Inventory read model (catalogue + effective configuration).
 app.use("/api/v1/inventory", inventoryRouter);
@@ -39,6 +64,9 @@ app.use("/api/v1/tenants", tenantRouter);
 
 // Maintenance work orders.
 app.use("/api/v1/maintenance", maintenanceRouter);
+
+// Reporting & export engine (rate-limited, property-scoped).
+app.use("/api/v1/reporting", reportingRouter);
 
 // User-scoped notifications.
 app.use("/api/v1/notifications", notificationRouter);

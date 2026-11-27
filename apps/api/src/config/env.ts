@@ -9,6 +9,12 @@ const envSchema = z.object({
   WEB_ORIGIN: z.string().url(),
   DATABASE_URL: z.string().min(1),
   SESSION_SECRET: z.string().min(32),
+  // Dev/test only: allows the x-property-id header to act as a scope bypass.
+  // Must never be true in production.
+  AUTH_DEV_BYPASS: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 const parsed = envSchema.safeParse(process.env);
