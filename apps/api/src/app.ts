@@ -14,6 +14,7 @@ import { tenantRouter } from "./modules/tenant/tenant-routes.js";
 import { reportingRouter } from "./modules/reporting/reporting-routes.js";
 import { notificationRouter } from "./modules/notification/notification-routes.js";
 import { authRouter } from "./modules/auth/auth-routes.js";
+import { searchRouter } from "./modules/search/search-routes.js";
 
 export const app: ReturnType<typeof express> = express();
 
@@ -41,6 +42,9 @@ app.use(originCheck);
 
 // Authentication (login, register, logout, me).
 app.use("/api/v1/auth", authRouter);
+
+// Global search (scope-filtered by the session user).
+app.use("/api/v1/search", searchRouter);
 
 // Inventory read model (catalogue + effective configuration).
 app.use("/api/v1/inventory", inventoryRouter);
