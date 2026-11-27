@@ -4,7 +4,7 @@
     "api": {
       "root": "apps/api",
       "framework": "express",
-      "entrypoint": "api/index.ts"
+      "entrypoint": "app.mts"
     },
     "web": {
       "root": "apps/web",
