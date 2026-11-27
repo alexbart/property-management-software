@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import helmet from "helmet";
+import * as helmet from "helmet";
 import { env } from "./config/env.js";
 import { sessionMiddleware } from "./config/session.js";
 import { originCheck } from "./middleware/origin-check.js";
@@ -19,7 +19,7 @@ import { searchRouter } from "./modules/search/search-routes.js";
 export const app: ReturnType<typeof express> = express();
 
 // Apply baseline HTTP security headers.
-app.use(helmet());
+app.use(helmet.default());
 
 // Restrict browser access to the configured frontend.
 app.use(
