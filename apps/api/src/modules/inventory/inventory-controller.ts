@@ -1,15 +1,29 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import {
+  createAmenitySchema,
+  createPolicyDefinitionSchema,
+  updateAmenitySchema,
+  updatePolicyDefinitionSchema,
+} from "@property-platform/contracts";
+import {
   toAmenityDto,
   toPolicyDefinitionDto,
   toResolvedAmenityDto,
   toResolvedPolicyDto,
 } from "./dto.js";
 import {
+  createAmenity,
+  createPolicyDefinition,
+  deactivateAmenity,
+  deactivatePolicyDefinition,
   getEffectiveConfig,
+  InventoryConflictError,
+  InventoryNotFoundError,
   listAmenities as listAmenityCatalogue,
   listPolicyDefinitions as listPolicyCatalogue,
+  updateAmenity,
+  updatePolicyDefinition,
 } from "./inventory-service.js";
 
 const effectiveQuerySchema = z
@@ -92,5 +106,107 @@ export async function getEffective(
     });
   } catch {
     res.status(500).json({ error: { code: "INTERNAL_ERROR" } });
+  }
+}
+
+function mutationError(res: Response, error: unknown): void {
+  if (error instanceof z.ZodError) {
+    badRequest(res, error);
+    return;
+  }
+  if (error instanceof InventoryConflictError) {
+    res.status(409).json({ error: { code: "CONFLICT", message: error.message } });
+    return;
+  }
+  if (error instanceof InventoryNotFoundError) {
+    res.status(404).json({ error: { code: "NOT_FOUND", message: error.message } });
+    return;
+  }
+  res.status(500).json({ error: { code: "INTERNAL_ERROR" } });
+}
+
+function idParam(req: Request): string {
+  return String(req.params.id);
+}
+
+/** POST /api/v1/inventory/amenities */
+export async function createAmenityHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const input = createAmenitySchema.parse(req.body);
+    const amenity = await createAmenity(input);
+    res.status(201).json({ data: toAmenityDto(amenity) });
+  } catch (error) {
+    mutationError(res, error);
+  }
+}
+
+/** PATCH /api/v1/inventory/amenities/:id */
+export async function updateAmenityHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const input = updateAmenitySchema.parse(req.body);
+    const amenity = await updateAmenity(idParam(req), input);
+    res.status(200).json({ data: toAmenityDto(amenity) });
+  } catch (error) {
+    mutationError(res, error);
+  }
+}
+
+/** DELETE /api/v1/inventory/amenities/:id (deactivate) */
+export async function deactivateAmenityHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    await deactivateAmenity(idParam(req));
+    res.status(204).send();
+  } catch (error) {
+    mutationError(res, error);
+  }
+}
+
+/** POST /api/v1/inventory/policies */
+export async function createPolicyHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const input = createPolicyDefinitionSchema.parse(req.body);
+    const policy = await createPolicyDefinition(input);
+    res.status(201).json({ data: toPolicyDefinitionDto(policy) });
+  } catch (error) {
+    mutationError(res, error);
+  }
+}
+
+/** PATCH /api/v1/inventory/policies/:id */
+export async function updatePolicyHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const input = updatePolicyDefinitionSchema.parse(req.body);
+    const policy = await updatePolicyDefinition(idParam(req), input);
+    res.status(200).json({ data: toPolicyDefinitionDto(policy) });
+  } catch (error) {
+    mutationError(res, error);
+  }
+}
+
+/** DELETE /api/v1/inventory/policies/:id (deactivate) */
+export async function deactivatePolicyHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    await deactivatePolicyDefinition(idParam(req));
+    res.status(204).send();
+  } catch (error) {
+    mutationError(res, error);
   }
 }
