@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Download,
   LineChart,
   TrendingUp,
   Wallet,
@@ -19,6 +20,7 @@ import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import { StatCard } from "../components/ui/StatCard";
 import { useReconciliation } from "../hooks/useReconciliation";
+import { useExportRentRoll } from "../hooks/useExportRentRoll";
 
 const currency = new Intl.NumberFormat("en-KE", {
   style: "currency",
@@ -70,6 +72,7 @@ export default function ReconciliationDashboard() {
     startDate,
     endDate,
   );
+  const { download: exportRentRoll, isDownloading } = useExportRentRoll();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -102,6 +105,15 @@ export default function ReconciliationDashboard() {
                 className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
             </label>
+            <button
+              type="button"
+              onClick={() => void exportRentRoll()}
+              disabled={isDownloading}
+              className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
+              {isDownloading ? "Exporting…" : "Export Rent Roll (CSV)"}
+            </button>
           </div>
         </div>
       </header>

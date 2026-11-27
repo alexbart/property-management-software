@@ -6,16 +6,20 @@ import { describe, expect, it } from "vitest";
 import App from "./App";
 
 describe("App", () => {
-  it("renders the platform title", () => {
+  it("renders the public login page", () => {
     const queryClient = new QueryClient();
     const html = renderToString(
       createElement(
         QueryClientProvider,
         { client: queryClient },
-        createElement(MemoryRouter, null, createElement(App)),
+        createElement(
+          MemoryRouter,
+          { initialEntries: ["/login"] },
+          createElement(App),
+        ),
       ),
     );
 
-    expect(html).toContain("Property Management Platform");
+    expect(html).toContain("Sign in");
   });
 });
