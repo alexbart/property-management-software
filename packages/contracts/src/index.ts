@@ -12,3 +12,4 @@ export * from "./reporting/index.js";
 export * from "./notification/index.js";
 export * from "./auth/index.js";
 export * from "./inventory/index.js";
+export * from "./search/index.js";

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Menu } from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
+import { SearchBar } from "./SearchBar";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserMenu } from "./UserMenu";
 
@@ -21,6 +22,12 @@ export function Topbar({ breadcrumbs, onOpenMobile, actions }: TopbarProps) {
       >
         <Menu className="h-5 w-5" />
       </button>
+      <div className="hidden flex-1 md:block">
+        <Breadcrumbs items={breadcrumbs} />
+      </div>
+      <div className="flex flex-1 justify-end md:flex-none md:justify-start">
+        <SearchBar />
+      </div>
       <div className="flex-1">
         <Breadcrumbs items={breadcrumbs} />
       </div>
