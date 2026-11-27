@@ -9,17 +9,6 @@ declare module "express-session" {
 
 /** 401 unless a valid, active session user exists. */
 export async function requireAuth(
-/**
- * Placeholder authentication.
- *
- * Real authentication/authorization is deferred to ADR-004. Until then the
- * caller's identity is supplied via the `x-user-id` header so user-scoped
- * isolation and rate limiting can be exercised and tested. This MUST be
- * replaced by proper auth middleware before production exposure.
- * isolation can be exercised and tested. This MUST be replaced by proper auth
- * middleware before production exposure.
- */
-export function requireAuth(
   req: Request,
   res: Response,
   next: NextFunction,

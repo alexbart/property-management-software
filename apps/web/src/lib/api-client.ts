@@ -2,6 +2,7 @@
 // Vite). Set VITE_API_URL to target the API directly in other environments.
 const DEFAULT_API_URL = "";
 const DEFAULT_PROPERTY_ID = "prop_123";
+const DEFAULT_USER_ID = "usr_123";
 
 /**
  * Resolve the property the current view is scoped to.
@@ -31,13 +32,6 @@ export class ApiError extends Error {
 interface ApiClientOptions extends RequestInit {
   /** Optional runtime validator (e.g. a shared Zod schema). */
   schema?: { parse(data: unknown): unknown };
-}
-
-export function resolvePropertyId(): string {
-  if (typeof window === "undefined") {
-    return DEFAULT_PROPERTY_ID;
-  }
-  return window.localStorage.getItem("mock-property-id") ?? DEFAULT_PROPERTY_ID;
 }
 
 function resolveUserId(): string {
@@ -77,10 +71,6 @@ export async function apiClient<T>(
     ...init,
     credentials: "include",
     headers: authHeaders(headers),
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
   });
 
   if (!response.ok) {
