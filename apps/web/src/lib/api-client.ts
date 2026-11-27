@@ -1,6 +1,21 @@
-const DEFAULT_API_URL = "http://localhost:4000";
+// Empty base => same-origin relative requests (proxied to the API in dev by
+// Vite). Set VITE_API_URL to target the API directly in other environments.
+const DEFAULT_API_URL = "";
 const DEFAULT_PROPERTY_ID = "prop_123";
-const DEFAULT_USER_ID = "11111111-1111-1111-1111-111111111111";
+const DEFAULT_USER_ID = "usr_123";
+
+/**
+ * Resolve the property the current view is scoped to.
+ *
+ * TODO(ADR-004): once the UI exposes the session user's property memberships,
+ * this should be derived from the authenticated user rather than localStorage.
+ */
+export function resolvePropertyId(): string {
+  if (typeof window === "undefined") {
+    return DEFAULT_PROPERTY_ID;
+  }
+  return window.localStorage.getItem("mock-property-id") ?? DEFAULT_PROPERTY_ID;
+}
 
 export class ApiError extends Error {
   readonly status: number;
@@ -17,13 +32,6 @@ export class ApiError extends Error {
 interface ApiClientOptions extends RequestInit {
   /** Optional runtime validator (e.g. a shared Zod schema). */
   schema?: { parse(data: unknown): unknown };
-}
-
-export function resolvePropertyId(): string {
-  if (typeof window === "undefined") {
-    return DEFAULT_PROPERTY_ID;
-  }
-  return window.localStorage.getItem("mock-property-id") ?? DEFAULT_PROPERTY_ID;
 }
 
 function resolveUserId(): string {
@@ -46,6 +54,7 @@ function authHeaders(extra?: HeadersInit): Record<string, string> {
  * Typed fetch wrapper for the backend.
  *
  * - Prepends `VITE_API_URL`.
+ * - Sends cookies (credentials: 'include') for session auth.
  * - Injects the `x-property-id` and `x-user-id` headers (mock context until ADR-004).
  * - Sends JSON.
  * - Throws `ApiError` on non-2xx responses.
@@ -60,13 +69,8 @@ export async function apiClient<T>(
 
   const response = await fetch(`${baseUrl}${endpoint}`, {
     ...init,
+    credentials: "include",
     headers: authHeaders(headers),
-    headers: {
-      "Content-Type": "application/json",
-      "x-property-id": resolvePropertyId(),
-      "x-user-id": resolveUserId(),
-      ...headers,
-    },
   });
 
   if (!response.ok) {
@@ -77,6 +81,10 @@ export async function apiClient<T>(
     throw new ApiError(response.status, message, details);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   const data: unknown = await response.json();
   return (schema ? schema.parse(data) : data) as T;
 }
@@ -84,6 +92,9 @@ export async function apiClient<T>(
 /**
  * Download a binary/text file from the API and save it via a hidden anchor.
  *
+ * Session cookies are attached (credentials: 'include'), the response is read
+ * as a Blob, and an object URL is used to trigger the browser download with
+ * the given filename.
  * Auth headers are attached (so header-based auth works for downloads), the
  * response is read as a Blob, and an object URL is used to trigger the browser
  * download with the given filename.
@@ -95,6 +106,7 @@ export async function downloadFile(
   const baseUrl = import.meta.env.VITE_API_URL ?? DEFAULT_API_URL;
 
   const response = await fetch(`${baseUrl}${endpoint}`, {
+    credentials: "include",
     headers: authHeaders(),
   });
 

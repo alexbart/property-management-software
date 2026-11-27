@@ -10,3 +10,5 @@ export * from "./tenant/index.js";
 export * from "./maintenance/index.js";
 export * from "./reporting/index.js";
 export * from "./notification/index.js";
+export * from "./auth/index.js";
+export * from "./inventory/index.js";
