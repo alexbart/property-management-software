@@ -28,6 +28,9 @@ export function Topbar({ breadcrumbs, onOpenMobile, actions }: TopbarProps) {
       <div className="flex flex-1 justify-end md:flex-none md:justify-start">
         <SearchBar />
       </div>
+      <div className="flex-1">
+        <Breadcrumbs items={breadcrumbs} />
+      </div>
       <div className="flex items-center gap-2">
         {actions}
         <ThemeToggle />

@@ -2,6 +2,7 @@
 // Vite). Set VITE_API_URL to target the API directly in other environments.
 const DEFAULT_API_URL = "";
 const DEFAULT_PROPERTY_ID = "prop_123";
+const DEFAULT_USER_ID = "usr_123";
 
 /**
  * Resolve the property the current view is scoped to.
@@ -33,11 +34,28 @@ interface ApiClientOptions extends RequestInit {
   schema?: { parse(data: unknown): unknown };
 }
 
+function resolveUserId(): string {
+  if (typeof window === "undefined") {
+    return DEFAULT_USER_ID;
+  }
+  return window.localStorage.getItem("mock-user-id") ?? DEFAULT_USER_ID;
+}
+
+function authHeaders(extra?: HeadersInit): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "x-property-id": resolvePropertyId(),
+    "x-user-id": resolveUserId(),
+    ...(extra as Record<string, string> | undefined),
+  };
+}
+
 /**
  * Typed fetch wrapper for the backend.
  *
  * - Prepends `VITE_API_URL`.
  * - Sends cookies (credentials: 'include') for session auth.
+ * - Injects the `x-property-id` and `x-user-id` headers (mock context until ADR-004).
  * - Sends JSON.
  * - Throws `ApiError` on non-2xx responses.
  * - Optionally validates the response with a shared contract schema.
@@ -56,6 +74,7 @@ export async function apiClient<T>(
       "Content-Type": "application/json",
       ...headers,
     },
+    headers: authHeaders(headers),
   });
 
   if (!response.ok) {
@@ -80,6 +99,9 @@ export async function apiClient<T>(
  * Session cookies are attached (credentials: 'include'), the response is read
  * as a Blob, and an object URL is used to trigger the browser download with
  * the given filename.
+ * Auth headers are attached (so header-based auth works for downloads), the
+ * response is read as a Blob, and an object URL is used to trigger the browser
+ * download with the given filename.
  */
 export async function downloadFile(
   endpoint: string,
@@ -89,6 +111,7 @@ export async function downloadFile(
 
   const response = await fetch(`${baseUrl}${endpoint}`, {
     credentials: "include",
+    headers: authHeaders(),
   });
 
   if (!response.ok) {
